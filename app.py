@@ -1,4 +1,3 @@
-import json
 import os
 import time
 from pathlib import Path
@@ -13,6 +12,8 @@ from flask import (
     url_for,
 )
 from werkzeug.utils import secure_filename
+
+from services import sidecar
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -48,13 +49,7 @@ def list_upload_folder():
 
 def load_lmstudio_sidecar(upload_path: Path):
     """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or None."""
-    side = upload_path.parent / (upload_path.name + ".meta.json")
-    if not side.is_file():
-        return None
-    try:
-        return json.loads(side.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
+    return sidecar.read(upload_path)
 
 
 def _resolved_upload_target(filename: str):
@@ -908,12 +903,7 @@ def delete_uploaded_file():
     except OSError as exc:
         return _render_upload_page(f"Could not delete file: {exc}", "err", vm), 500
 
-    sidecar = target.parent / (target.name + ".meta.json")
-    if sidecar.is_file():
-        try:
-            sidecar.unlink()
-        except OSError:
-            pass
+    sidecar.delete(target)
 
     return _render_upload_page(f"Deleted `{target.name}`.", "ok", vm), 200
 

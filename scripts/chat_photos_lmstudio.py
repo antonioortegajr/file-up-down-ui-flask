@@ -54,6 +54,9 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from services import sidecar
+
 LMS = "lms"  # LM Studio CLI binary name
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 MIME = {
@@ -142,21 +145,12 @@ def _encode_image(path: Path) -> dict:
 
 def _desc_sidecar_path(image_path: Path) -> Path:
     """Path to the general-description cache: uploads/.desc_cache/photo.jpg.json"""
-    cache_dir = image_path.parent / ".desc_cache"
-    cache_dir.mkdir(exist_ok=True)
-    return cache_dir / (image_path.name + ".json")
+    return sidecar.desc_cache_path(image_path)
 
 
 def _load_sidecar(image_path: Path) -> dict | None:
     """Load the general description sidecar (.desc.json), falling back to .meta.json."""
-    for side in (_desc_sidecar_path(image_path),
-                 image_path.parent / (image_path.name + ".meta.json")):
-        if side.is_file():
-            try:
-                return json.loads(side.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-    return None
+    return sidecar.read_with_desc_fallback(image_path)
 
 
 def _write_metadata(image_path: Path, updates: dict) -> None:
@@ -165,16 +159,7 @@ def _write_metadata(image_path: Path, updates: dict) -> None:
     summary into the EXIF UserComment tag for JPEG files.
     """
     # ── sidecar ──────────────────────────────────────────────────────────────
-    sidecar = image_path.parent / (image_path.name + ".meta.json")
-    existing: dict = {}
-    if sidecar.is_file():
-        try:
-            existing = json.loads(sidecar.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    existing.update(updates)
-    existing["last_updated"] = datetime.now(timezone.utc).isoformat()
-    sidecar.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    existing = sidecar.merge(image_path, updates)
 
     # ── EXIF (JPEG only, via Pillow) ─────────────────────────────────────────
     if image_path.suffix.lower() in (".jpg", ".jpeg"):
@@ -539,15 +524,11 @@ def ensure_sidecars(uploads: Path, base_v1: str, api_key: str, model: str) -> No
         print(f"  [{i}/{len(missing)}] {img.name} … ", end="", flush=True)
         try:
             notes = _describe_image(base_v1, api_key, model, img)
-            _desc_sidecar_path(img).write_text(
-                json.dumps({
-                    "notes": notes,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
-                    "model": model,
-                    "source": "chat_photos_lmstudio.py",
-                }, indent=2),
-                encoding="utf-8",
-            )
+            sidecar.write_desc_cache(img, {
+                "notes": notes,
+                "model": model,
+                "source": "chat_photos_lmstudio.py",
+            })
             print(notes[:80] + ("…" if len(notes) > 80 else ""))
         except KeyboardInterrupt:
             print("\nIndexing interrupted. Descriptions written so far will be used.")
