@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from pathlib import Path
@@ -18,6 +19,7 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "gif"}
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
+
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -37,8 +39,22 @@ def list_upload_folder():
     return sorted(
         f
         for f in os.listdir(UPLOAD_FOLDER)
-        if not f.startswith(".") and os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
+        if not f.startswith(".")
+        and os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
+        and not f.endswith(".meta.json")
+        and f != "_set_unique.meta.json"
     )
+
+
+def load_lmstudio_sidecar(upload_path: Path):
+    """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or None."""
+    side = upload_path.parent / (upload_path.name + ".meta.json")
+    if not side.is_file():
+        return None
+    try:
+        return json.loads(side.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
 
 
 def _resolved_upload_target(filename: str):
@@ -727,6 +743,49 @@ DETAIL_TEMPLATE = """
     <p class="banner" role="note">{{ meta_note }}</p>
     {% endif %}
 
+    {% if lmstudio_meta %}
+    <div class="card">
+      <h2>Photo metadata</h2>
+      <dl class="meta">
+        {% if lmstudio_meta.get('people') %}
+        <dt>People</dt>
+        <dd>{{ lmstudio_meta.people | join(', ') | e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('event') %}
+        <dt>Event</dt>
+        <dd>{{ lmstudio_meta.event|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('date') %}
+        <dt>Date</dt>
+        <dd>{{ lmstudio_meta.date|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('location') %}
+        <dt>Location</dt>
+        <dd>{{ lmstudio_meta.location|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('has_people') is not none and lmstudio_meta.get('people_count') is not none %}
+        <dt>People count</dt>
+        <dd>{{ lmstudio_meta.people_count }} ({{ lmstudio_meta.get('distinct_people', '?') }} distinct)</dd>
+        {% endif %}
+        {% if lmstudio_meta.notes %}
+        <dt>Notes</dt>
+        <dd>{{ lmstudio_meta.notes|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('last_updated') %}
+        <dt>Last updated</dt>
+        <dd>{{ lmstudio_meta.last_updated|e }}</dd>
+        {% elif lmstudio_meta.get('generated_at') %}
+        <dt>Analyzed</dt>
+        <dd>{{ lmstudio_meta.generated_at|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('model') %}
+        <dt>Model</dt>
+        <dd><code>{{ lmstudio_meta.model|e }}</code></dd>
+        {% endif %}
+      </dl>
+    </div>
+    {% endif %}
+
     <div class="card">
       <h2>File</h2>
       <dl class="meta">
@@ -771,6 +830,7 @@ DETAIL_TEMPLATE = """
 </body>
 </html>
 """
+
 
 
 def _render_upload_page(
@@ -848,6 +908,13 @@ def delete_uploaded_file():
     except OSError as exc:
         return _render_upload_page(f"Could not delete file: {exc}", "err", vm), 500
 
+    sidecar = target.parent / (target.name + ".meta.json")
+    if sidecar.is_file():
+        try:
+            sidecar.unlink()
+        except OSError:
+            pass
+
     return _render_upload_page(f"Deleted `{target.name}`.", "ok", vm), 200
 
 
@@ -864,6 +931,7 @@ def file_detail(filename):
         abort(404)
     vm = _normalize_view_mode(request.args.get("view"))
     bundle = build_metadata_rows(target)
+    lm_raw = load_lmstudio_sidecar(target)
     return render_template_string(
         DETAIL_TEMPLATE,
         filename=filename,
@@ -874,6 +942,7 @@ def file_detail(filename):
         meta_exif=bundle["exif"],
         is_image=bundle["is_image"],
         meta_note=bundle["note"],
+        lmstudio_meta=lm_raw,
     )
 
 
