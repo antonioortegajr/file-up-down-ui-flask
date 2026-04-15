@@ -1,9 +1,11 @@
+import json
 import os
 import time
 from pathlib import Path
 
 from flask import (
     Flask,
+    Response,
     abort,
     jsonify,
     render_template_string,
@@ -13,7 +15,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from services import sidecar
+from services import jobs, sidecar
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -565,6 +567,27 @@ HTML_TEMPLATE = """
       {% endif %}
     </section>
   </div>
+  <script>
+    function streamJob(jobId, onProgress, onDone) {
+      var es = new EventSource('/api/jobs/' + encodeURIComponent(jobId));
+      es.onmessage = function(e) {
+        var data = JSON.parse(e.data);
+        if (data.error) {
+          onProgress && onProgress(data);
+          es.close();
+          onDone && onDone({error: data.error});
+          return;
+        }
+        onProgress && onProgress(data);
+        if (data.result !== undefined) {
+          es.close();
+          onDone && onDone({result: data.result});
+        }
+      };
+      es.onerror = function() { es.close(); };
+      return es;
+    }
+  </script>
 </body>
 </html>
 """
@@ -969,6 +992,35 @@ def uploaded_file(filename):
     base = Path(app.config["UPLOAD_FOLDER"]).resolve()
     rel = target.relative_to(base)
     return send_from_directory(str(base), rel.as_posix())
+
+
+@app.route("/api/jobs/<job_id>")
+def job_stream(job_id):
+    job = jobs.get_job(job_id)
+    if job is None:
+        abort(404)
+
+    def generate():
+        for update in jobs.stream_progress(job_id):
+            data = {"progress": update.get("progress", 0), "message": update.get("message", "")}
+            if update.get("result") is not None:
+                data["result"] = update["result"]
+            if update.get("error"):
+                data["error"] = update["error"]
+            yield f"data: {json.dumps(data)}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream")
+
+
+@app.route("/api/jobs/<job_id>/result")
+def job_result(job_id):
+    job = jobs.get_job(job_id)
+    if job is None:
+        abort(404)
+    data = job.to_dict()
+    if data["status"] == "failed":
+        return jsonify({"status": "failed", "error": data.get("error")}), 200
+    return jsonify({"status": data["status"], "result": data.get("result")}), 200
 
 
 if __name__ == "__main__":
