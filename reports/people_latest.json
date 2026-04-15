@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-04-12T05:12:28.991639+00:00",
+  "lm_studio_base": "http://127.0.0.1:1234/v1",
+  "model": "YOUR_MODEL_ID",
+  "uploads_dir": "/Users/antonioortega/GitHub/file-up-down-ui-flask/uploads",
+  "results": [
+    {
+      "file": "IDX2019Holiday_12.jpg",
+      "people_count": 1,
+      "error": null
+    },
+    {
+      "file": "Screenshot_2026-03-15_at_9.17.11_PM.png",
+      "people_count": 1,
+      "error": null
+    },
+    {
+      "file": "Screenshot_2026-04-07_at_4.14.14_PM.png",
+      "people_count": 0,
+      "error": null
+    },
+    {
+      "file": "Screenshot_2026-04-08_at_9.36.22_PM.png",
+      "people_count": 1,
+      "error": null
+    },
+    {
+      "file": "Screenshot_2026-04-08_at_9.52.56_PM.png",
+      "people_count": 2,
+      "error": null
+    },
+    {
+      "file": "Screenshot_2026-04-08_at_9.54.50_PM.png",
+      "people_count": 2,
+      "error": null
+    }
+  ],
+  "summary": {
+    "images_attempted": 6,
+    "images_with_count": 6,
+    "images_failed": 0,
+    "files_with_zero_people": [
+      "Screenshot_2026-04-07_at_4.14.14_PM.png"
+    ],
+    "same_people_count_in_every_successful_image": false,
+    "that_count_if_all_same": null,
+    "distinct_counts_observed": [
+      0,
+      1,
+      2
+    ],
+    "count_breakdown": {
+      "0": [
+        "Screenshot_2026-04-07_at_4.14.14_PM.png"
+      ],
+      "1": [
+        "IDX2019Holiday_12.jpg",
+        "Screenshot_2026-03-15_at_9.17.11_PM.png",
+        "Screenshot_2026-04-08_at_9.36.22_PM.png"
+      ],
+      "2": [
+        "Screenshot_2026-04-08_at_9.52.56_PM.png",
+        "Screenshot_2026-04-08_at_9.54.50_PM.png"
+      ]
+    },
+    "failed": []
+  },
+  "limitations": [
+    "Counts are model estimates, not ground truth (no human verification).",
+    "Crowds, occlusion, mirrors, and distant figures often produce wrong totals.",
+    "Screenshots may show people in UI thumbnails, video frames, or photos-within-photos \u2014 the model may count or skip those inconsistently.",
+    "If the API or parsing failed for a file, that file has no reliable count in this report."
+  ]
+}
