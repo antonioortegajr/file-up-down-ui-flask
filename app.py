@@ -20,6 +20,7 @@ from services import jobs, sidecar, lmstudio
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+PEOPLE_FOLDER = os.path.join(os.getcwd(), "people")
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "gif"}
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
@@ -35,6 +36,31 @@ _started_monotonic = time.monotonic()
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def list_people():
+    """Return list of person dicts from people/<uuid>/person.json files."""
+    if not os.path.isdir(PEOPLE_FOLDER):
+        return []
+    people = []
+    for uuid_dir in os.listdir(PEOPLE_FOLDER):
+        person_file = os.path.join(PEOPLE_FOLDER, uuid_dir, "person.json")
+        if not os.path.isfile(person_file):
+            continue
+        try:
+            with open(person_file, "r", encoding="utf-8") as f:
+                person = json.load(f)
+            person["id"] = uuid_dir
+            people.append(person)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+    return sorted(people, key=lambda p: p.get("name", "").lower())
+
+
+def count_tagged_photos(person_name: str) -> int:
+    """Count photos in uploads tagged with the given person name."""
+    results = sidecar.search(Path(UPLOAD_FOLDER), person_name)
+    return len(results)
 
 
 def list_upload_folder():
@@ -247,6 +273,31 @@ HTML_TEMPLATE = """
       max-width: 28rem;
       margin: 0 auto;
     }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
     header { margin-bottom: 1.5rem; }
     h1 {
       font-size: clamp(1.35rem, 4vw, 1.6rem);
@@ -495,6 +546,11 @@ HTML_TEMPLATE = """
 </head>
 <body>
   <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}" class="is-active">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#">Search</a>
+    </nav>
     <header>
       <h1>Upload files <span id="lms-status" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f44336;vertical-align:middle;margin-left:6px;"></span></h1>
       <p class="lede">txt, pdf, png, jpg, jpeg, gif — multiple files allowed</p>
@@ -759,10 +815,40 @@ DETAIL_TEMPLATE = """
     .btn-delete:hover {
       background: rgba(229, 57, 53, 0.32);
     }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}" class="is-active">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#">Search</a>
+    </nav>
     <a class="back" href="{{ url_for('upload_form', view=view_mode) }}">← All files</a>
     <h1>{{ filename|e }}</h1>
 
@@ -865,6 +951,222 @@ DETAIL_TEMPLATE = """
 """
 
 
+PEOPLE_TEMPLATE = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>People</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      margin: 0 0 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .btn {
+      min-height: var(--tap-min);
+      padding: 0 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(0.98); }
+    ul.people-grid {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    @media (min-width: 400px) {
+      ul.people-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .person-card {
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+      background: var(--bg-input);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      text-decoration: none;
+    }
+    .person-card:hover { border-color: var(--accent); }
+    .person-preview {
+      display: block;
+      aspect-ratio: 1;
+      background: #0a0e14;
+      position: relative;
+    }
+    .person-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .person-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+    .person-meta {
+      padding: 0.45rem 0.5rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      flex: 1;
+    }
+    .person-name {
+      font-size: 0.75rem;
+      color: var(--text);
+      font-weight: 600;
+      word-break: break-word;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .person-count {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .empty {
+      margin: 0;
+      padding: 2rem 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .empty p { margin: 0 0 1rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('people_page') }}" class="is-active">People</a>
+      <a href="#">Search</a>
+    </nav>
+    <header>
+      <h1>People</h1>
+      <p class="lede">Known people in your photo library</p>
+    </header>
+    {% if people %}
+    <ul class="people-grid">
+      {% for person in people %}
+      <li>
+        <a class="person-card" href="{{ url_for('person_detail', person_id=person.id) }}">
+          <div class="person-preview">
+            {% if person.reference_photos %}
+            <img src="{{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0]) }}" alt="" loading="lazy" width="200" height="200">
+            {% else %}
+            <div class="person-placeholder">NO PHOTO</div>
+            {% endif %}
+          </div>
+          <div class="person-meta">
+            <span class="person-name">{{ person.name | e }}</span>
+            <span class="person-count">{{ person.tagged_count }} photo{% if person.tagged_count != 1 %}s{% endif %}</span>
+          </div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">
+      <p>No people added yet.</p>
+      <a class="btn" href="{{ url_for('new_person') }}">Add first person</a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
+"""
+
 
 def _render_upload_page(
     upload_message=None, upload_status="ok", view_mode="thumb"
@@ -950,6 +1252,30 @@ def delete_uploaded_file():
 def list_files():
     vm = _normalize_view_mode(request.args.get("view"))
     return _render_upload_page(view_mode=vm)
+
+
+@app.route("/people")
+def people_page():
+    people = list_people()
+    for person in people:
+        person["tagged_count"] = count_tagged_photos(person.get("name", ""))
+    return render_template_string(PEOPLE_TEMPLATE, people=people)
+
+
+@app.route("/people/new")
+def new_person():
+    abort(404)
+
+
+@app.route("/people/<person_id>")
+def person_detail(person_id):
+    abort(404)
+
+
+@app.route("/people/ref/<person_id>/<filename>")
+def person_ref_photo(person_id, filename):
+    safe_filename = secure_filename(filename)
+    return send_from_directory(os.path.join(PEOPLE_FOLDER, person_id), safe_filename)
 
 
 @app.route("/file/<path:filename>")
