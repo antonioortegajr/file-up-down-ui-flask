@@ -49,6 +49,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from services import sidecar
+
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 MIME = {
     ".png": "image/png",
@@ -287,7 +290,7 @@ def _parse_set_unique_response(text: str) -> dict:
 
 def sidecar_path_for_image(image_path: Path) -> Path:
     """`photo.jpg` → `photo.jpg.meta.json` next to the image."""
-    return image_path.parent / (image_path.name + ".meta.json")
+    return sidecar.meta_path(image_path)
 
 
 def write_sidecar_record(
@@ -303,16 +306,12 @@ def write_sidecar_record(
         "distinct_people": parsed["distinct_people"],
         "has_people": parsed["has_people"],
         "notes": parsed["notes"],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": model,
         "lm_studio_base": lm_base,
         "source": "analyze_uploads_people_lmstudio.py",
     }
-    sidecar_path_for_image(image_path).write_text(
-        json.dumps(record, indent=2),
-        encoding="utf-8",
-    )
-    return record
+    sidecar.write(image_path, record)
+    return sidecar.read(image_path)
 
 
 def _build_report_payload(
