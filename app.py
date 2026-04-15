@@ -1,3 +1,4 @@
+import threading
 import json
 import os
 import time
@@ -15,7 +16,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from services import jobs, sidecar
+from services import jobs, sidecar, lmstudio
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -495,7 +496,7 @@ HTML_TEMPLATE = """
 <body>
   <div class="wrap">
     <header>
-      <h1>Upload files</h1>
+      <h1>Upload files <span id="lms-status" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f44336;vertical-align:middle;margin-left:6px;"></span></h1>
       <p class="lede">txt, pdf, png, jpg, jpeg, gif — multiple files allowed</p>
     </header>
     <section class="card" aria-labelledby="upload-heading">
@@ -587,6 +588,20 @@ HTML_TEMPLATE = """
       es.onerror = function() { es.close(); };
       return es;
     }
+    (function() {
+      var dot = document.getElementById('lms-status');
+      if (!dot) return;
+      function poll() {
+        fetch('/api/lmstudio/status')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            dot.style.background = (d.server === 'up' && d.model === 'loaded') ? '#4caf50' : '#f44336';
+          })
+          .catch(function() { dot.style.background = '#f44336'; });
+      }
+      poll();
+      setInterval(poll, 5000);
+    })();
   </script>
 </body>
 </html>
@@ -1023,5 +1038,25 @@ def job_result(job_id):
     return jsonify({"status": data["status"], "result": data.get("result")}), 200
 
 
+@app.route("/api/lmstudio/status")
+def lmstudio_status():
+    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    model = os.environ.get("LMSTUDIO_MODEL", "")
+    server = "up" if lmstudio.server_is_up(base) else "down"
+    model_state = "unloaded"
+    if server == "up" and model:
+        model_state = "loaded" if lmstudio.model_is_loaded(base, model) else "unloaded"
+    return jsonify({"server": server, "model": model_state})
+
+
+def _start_lmstudio_background():
+    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    model = os.environ.get("LMSTUDIO_MODEL", "")
+    if model:
+        t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
+        t.start()
+
+
 if __name__ == "__main__":
+    _start_lmstudio_background()
     app.run(host="0.0.0.0", port=8080)
