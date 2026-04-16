@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>{{ 'Edit' if person else 'New' }} Person</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --danger: #d45b5b;
+      --danger-hover: #e07070;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      margin: 0 0 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .btn {
+      min-height: var(--tap-min);
+      padding: 0 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(0.98); }
+    .btn-secondary {
+      color: var(--text);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-input); }
+    .btn-danger {
+      color: #fff;
+      background: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .actions .btn { flex: 1; }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+    input[type="file"] {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+      margin-right: 0.5rem;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8rem;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    input[type="file"]::file-selector-button:hover {
+      background: var(--accent-hover);
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .photo-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .photo-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    .error-msg {
+      background: rgba(212, 91, 91, 0.15);
+      border: 1px solid var(--danger);
+      border-radius: calc(var(--radius) - 4px);
+      padding: 0.65rem 0.75rem;
+      font-size: 0.9rem;
+      color: var(--danger);
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#">Search</a>
+    </nav>
+    <header>
+      <h1>{{ 'Edit' if person else 'New' }} Person</h1>
+      <p class="lede">{{ "Update name or add photos." if person else "Add a reference name and photos." }}</p>
+    </header>
+    {% if error %}
+    <div class="error-msg">{{ error | e }}</div>
+    {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" value="{{ person.name | e if person else '' }}" required placeholder="Enter person's name">
+      </div>
+      {% if person %}
+      <div class="form-group">
+        <label>Current Photos</label>
+        <div class="photo-grid">
+          {% for photo in person.reference_photos %}
+          <div class="photo-item">
+            <img src="{{ url_for('person_ref_photo', person_id=person.id, filename=photo) }}" alt="">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label for="photos">{{ "Add More Photos" if person else "Reference Photos" }}</label>
+        <input type="file" id="photos" name="photos" multiple accept=".jpg,.jpeg,.png,.gif">
+        <p class="photo-hint">{{ "Select additional photos to add." if person else "At least one photo required. Hold Ctrl/Cmd to select multiple." }}</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-secondary" href="{{ url_for('people_page') }}">Cancel</a>
+        <button class="btn" type="submit">{{ "Save Changes" if person else "Create Person" }}</button>
+      </div>
+    </form>
+    {% if person %}
+    <form method="POST" action="{{ url_for('delete_person', person_id=person.id) }}" onsubmit="return confirm('Delete {{ person.name | e }}? This cannot be undone.');" style="margin-top: 1.5rem;">
+      <button class="btn btn-danger" type="submit" style="width: 100%;">Delete Person</button>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

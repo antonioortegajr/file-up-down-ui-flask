@@ -1,7 +1,9 @@
 import threading
 import json
 import os
+import shutil
 import time
+import uuid
 from pathlib import Path
 
 from flask import (
@@ -9,6 +11,7 @@ from flask import (
     Response,
     abort,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -323,9 +326,82 @@ def people_page():
     return render_template("people.html", people=people)
 
 
-@app.route("/people/new")
+@app.route("/people/new", methods=["GET", "POST"])
 def new_person():
-    abort(404)
+    if request.method == "GET":
+        return render_template("person_form.html", person=None, error=None)
+
+    name = request.form.get("name", "").strip()
+    if not name:
+        return render_template("person_form.html", person=None, error="Name is required."), 400
+
+    photos = [f for f in request.files.getlist("photos") if f and f.filename]
+    if not photos:
+        return render_template("person_form.html", person=None, error="At least one reference photo is required."), 400
+
+    person_id = str(uuid.uuid4())
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    os.makedirs(person_dir, exist_ok=True)
+
+    saved_photos = []
+    for photo in photos:
+        ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
+        safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+        photo.save(os.path.join(person_dir, safe_name))
+        saved_photos.append(safe_name)
+
+    person_data = {"id": person_id, "name": name, "reference_photos": saved_photos}
+    with open(os.path.join(person_dir, "person.json"), "w", encoding="utf-8") as f:
+        json.dump(person_data, f, indent=2)
+
+    return redirect(url_for("people_page"))
+
+
+@app.route("/people/<person_id>/edit", methods=["GET", "POST"])
+def edit_person(person_id):
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+
+    if not os.path.isfile(person_file):
+        abort(404)
+
+    with open(person_file, "r", encoding="utf-8") as f:
+        person = json.load(f)
+    person["id"] = person_id
+
+    if request.method == "GET":
+        return render_template("person_form.html", person=person, error=None)
+
+    name = request.form.get("name", "").strip()
+    if not name:
+        return render_template("person_form.html", person=person, error="Name is required."), 400
+
+    photos = [f for f in request.files.getlist("photos") if f and f.filename]
+    new_photos = []
+    for photo in photos:
+        ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
+        safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+        photo.save(os.path.join(person_dir, safe_name))
+        new_photos.append(safe_name)
+
+    person["name"] = name
+    person["reference_photos"] = person.get("reference_photos", []) + new_photos
+
+    with open(person_file, "w", encoding="utf-8") as f:
+        json.dump(person, f, indent=2)
+
+    return redirect(url_for("people_page"))
+
+
+@app.route("/people/<person_id>/delete", methods=["POST"])
+def delete_person(person_id):
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    if not os.path.isdir(person_dir):
+        abort(404)
+
+    shutil.rmtree(person_dir)
+
+    return redirect(url_for("people_page"))
 
 
 @app.route("/people/<person_id>")
