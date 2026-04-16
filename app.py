@@ -406,7 +406,52 @@ def delete_person(person_id):
 
 @app.route("/people/<person_id>")
 def person_detail(person_id):
-    abort(404)
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+
+    if not os.path.isfile(person_file):
+        abort(404)
+
+    with open(person_file, "r", encoding="utf-8") as f:
+        person = json.load(f)
+    person["id"] = person_id
+
+    tagged_results = sidecar.search(Path(UPLOAD_FOLDER), person.get("name", ""))
+    tagged_photos = [(path, meta) for path, meta in tagged_results]
+
+    return render_template(
+        "person_detail.html",
+        person=person,
+        tagged_photos=tagged_photos,
+        tagged_count=len(tagged_photos),
+    )
+
+
+@app.route("/people/<person_id>/add-photo", methods=["POST"])
+def add_person_photo(person_id):
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+
+    if not os.path.isfile(person_file):
+        abort(404)
+
+    photo = request.files.get("photo")
+    if not photo or not photo.filename:
+        abort(400)
+
+    ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
+    safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+    photo.save(os.path.join(person_dir, safe_name))
+
+    with open(person_file, "r", encoding="utf-8") as f:
+        person = json.load(f)
+
+    person["reference_photos"] = person.get("reference_photos", []) + [safe_name]
+
+    with open(person_file, "w", encoding="utf-8") as f:
+        json.dump(person, f, indent=2)
+
+    return redirect(url_for("person_detail", person_id=person_id))
 
 
 @app.route("/people/ref/<person_id>/<filename>")
