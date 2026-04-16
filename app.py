@@ -570,6 +570,48 @@ def person_ref_photo(person_id, filename):
     return send_from_directory(os.path.join(PEOPLE_FOLDER, person_id), safe_filename)
 
 
+def _find_match_reason(meta, query):
+    """Return the first sidecar field that matched the query."""
+    if not meta:
+        return None
+    query_lower = query.lower()
+    keywords = query_lower.split()
+    search_fields = ["people", "event", "date", "location", "notes", "subject", "source"]
+    for field in search_fields:
+        value = meta.get(field)
+        if value is None:
+            continue
+        if isinstance(value, list):
+            for v in value:
+                if query_lower in str(v).lower():
+                    return f"{field.title()}: {v}"
+        elif isinstance(value, str):
+            for kw in keywords:
+                if kw in value.lower():
+                    return f"{field.title()}: {value[:80]}{'...' if len(value) > 80 else ''}"
+    return None
+
+
+@app.route("/search")
+def search_page():
+    query = request.args.get("q", "").strip()
+    mode = request.args.get("mode", "text")
+
+    if mode == "person":
+        return render_template("search.html", query=query, mode=mode, results=[])
+
+    if not query:
+        return render_template("search.html", query=None, mode=mode, results=[])
+
+    raw_results = sidecar.search(Path(UPLOAD_FOLDER), query)
+    results = []
+    for path, meta in raw_results:
+        match_reason = _find_match_reason(meta, query)
+        results.append((path, meta, match_reason))
+
+    return render_template("search.html", query=query, mode=mode, results=results)
+
+
 @app.route("/file/<path:filename>")
 def file_detail(filename):
     target = _resolved_upload_target(filename)
