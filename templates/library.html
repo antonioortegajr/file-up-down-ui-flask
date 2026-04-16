@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>File Uploader</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap {
+      width: 100%;
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    header { margin-bottom: 1.5rem; }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .upload-form { margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+    .file-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    @media (min-width: 380px) {
+      .file-row {
+        flex-direction: row;
+        align-items: stretch;
+        flex-wrap: wrap;
+      }
+      .file-row input[type="file"] { flex: 1 1 8rem; min-width: 0; }
+    }
+    input[type="file"] {
+      min-height: var(--tap-min);
+      padding: 0.5rem 0.65rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      width: 100%;
+    }
+    input[type="submit"] {
+      min-height: var(--tap-min);
+      padding: 0 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      width: 100%;
+    }
+    @media (min-width: 380px) {
+      input[type="submit"] { width: auto; align-self: flex-end; min-width: 7.5rem; }
+    }
+    input[type="submit"]:hover { background: var(--accent-hover); }
+    input[type="submit"]:active { transform: scale(0.98); }
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 0.65rem;
+    }
+    .file-link {
+      display: flex;
+      align-items: center;
+      min-height: var(--tap-min);
+      padding: 0.65rem 0.85rem;
+      border-radius: calc(var(--radius) - 4px);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-word;
+    }
+    .file-link:hover { color: var(--accent-hover); border-color: var(--accent); }
+    .file-link:active { opacity: 0.92; }
+    .file-item {
+      display: flex;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+    .file-item .file-link { flex: 1; min-width: 0; }
+    .file-item form {
+      margin: 0;
+      display: flex;
+      align-items: stretch;
+    }
+    .btn-delete {
+      min-height: var(--tap-min);
+      padding: 0 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.18);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-delete:hover {
+      background: rgba(229, 57, 53, 0.32);
+      border-color: rgba(229, 57, 53, 0.65);
+    }
+    .btn-delete:active { transform: scale(0.98); }
+    .empty {
+      margin: 0;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .banner {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .banner--ok {
+      color: #c8e6c9;
+      background: rgba(76, 175, 80, 0.15);
+      border: 1px solid rgba(76, 175, 80, 0.45);
+    }
+    .banner--err {
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.15);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+    }
+    .view-switch {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    .view-switch a {
+      flex: 1;
+      text-align: center;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    .view-switch a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    .view-switch a + a { border-left: 1px solid var(--border); }
+    ul.file-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    ul.thumb-grid {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    @media (min-width: 400px) {
+      ul.thumb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .thumb-card {
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+      background: var(--bg-input);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .thumb-preview {
+      display: block;
+      aspect-ratio: 1;
+      background: #0a0e14;
+      position: relative;
+    }
+    .thumb-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .thumb-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+    .thumb-meta {
+      padding: 0.45rem 0.5rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+    }
+    .thumb-name {
+      font-size: 0.72rem;
+      color: var(--accent);
+      word-break: break-word;
+      text-decoration: none;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .thumb-name:hover { color: var(--accent-hover); }
+    .thumb-actions { margin-top: auto; }
+    .thumb-actions form { margin: 0; display: block; }
+    .thumb-actions .btn-delete {
+      min-height: 40px;
+      width: 100%;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}" class="is-active">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#">Search</a>
+    </nav>
+    <header>
+      <h1>Upload files <span id="lms-status" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f44336;vertical-align:middle;margin-left:6px;"></span></h1>
+      <p class="lede">txt, pdf, png, jpg, jpeg, gif — multiple files allowed</p>
+    </header>
+    <section class="card" aria-labelledby="upload-heading">
+      {% if upload_message %}
+      <p class="banner banner--{{ upload_status }}" role="status">{{ upload_message }}</p>
+      {% endif %}
+      <h2 id="upload-heading">Add files</h2>
+      <form class="upload-form" method="post" enctype="multipart/form-data" action="/upload">
+        <input type="hidden" name="view" value="{{ view_mode }}">
+        <div class="file-row">
+          <input type="file" name="file" id="file" multiple required>
+          <input type="submit" value="Upload">
+        </div>
+        <p class="hint">Choose one or more files (e.g. Shift/Ctrl/Cmd+click). Stored on the server.</p>
+      </form>
+    </section>
+    <section aria-labelledby="files-heading">
+      <h2 id="files-heading">Uploaded files</h2>
+      <div class="view-switch" role="group" aria-label="How to show files">
+        <a href="{{ url_for('upload_form', view='thumb') }}" class="{% if view_mode == 'thumb' %}is-active{% endif %}">Thumbnails</a>
+        <a href="{{ url_for('upload_form', view='list') }}" class="{% if view_mode == 'list' %}is-active{% endif %}">List</a>
+      </div>
+      {% if files %}
+        {% if view_mode == 'list' %}
+      <ul class="file-list">
+        {% for filename in files %}
+        <li class="file-item">
+          <a class="file-link" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}">{{ filename }}</a>
+          <form method="post" action="/delete" onsubmit="return confirm('Delete this file?');">
+            <input type="hidden" name="filename" value="{{ filename|e }}">
+            <input type="hidden" name="view" value="{{ view_mode }}">
+            <button type="submit" class="btn-delete" aria-label="Delete {{ filename|e }}">Delete</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+        {% else %}
+      <ul class="thumb-grid">
+        {% for filename in files %}
+        {% set parts = filename.rsplit('.', 1) %}
+        {% set ext = parts[1].lower() if parts|length == 2 else '' %}
+        {% set is_img = ext in ['png', 'jpg', 'jpeg', 'gif'] %}
+        <li>
+          <div class="thumb-card">
+            <a class="thumb-preview" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}" title="Details for {{ filename|e }}">
+              {% if is_img %}
+              <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="" loading="lazy" width="200" height="200">
+              {% else %}
+              <span class="thumb-placeholder"><span>{{ ext|upper if ext else 'FILE' }}</span></span>
+              {% endif %}
+            </a>
+            <div class="thumb-meta">
+              <a class="thumb-name" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}">{{ filename }}</a>
+              <div class="thumb-actions">
+                <form method="post" action="/delete" onsubmit="return confirm('Delete this file?');">
+                  <input type="hidden" name="filename" value="{{ filename|e }}">
+                  <input type="hidden" name="view" value="{{ view_mode }}">
+                  <button type="submit" class="btn-delete" aria-label="Delete {{ filename|e }}">Delete</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+        {% endif %}
+      {% else %}
+      <p class="empty">No files yet — upload something above.</p>
+      {% endif %}
+    </section>
+  </div>
+  <script>
+    function streamJob(jobId, onProgress, onDone) {
+      var es = new EventSource('/api/jobs/' + encodeURIComponent(jobId));
+      es.onmessage = function(e) {
+        var data = JSON.parse(e.data);
+        if (data.error) {
+          onProgress && onProgress(data);
+          es.close();
+          onDone && onDone({error: data.error});
+          return;
+        }
+        onProgress && onProgress(data);
+        if (data.result !== undefined) {
+          es.close();
+          onDone && onDone({result: data.result});
+        }
+      };
+      es.onerror = function() { es.close(); };
+      return es;
+    }
+    (function() {
+      var dot = document.getElementById('lms-status');
+      if (!dot) return;
+      function poll() {
+        fetch('/api/lmstudio/status')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            dot.style.background = (d.server === 'up' && d.model === 'loaded') ? '#4caf50' : '#f44336';
+          })
+          .catch(function() { dot.style.background = '#f44336'; });
+      }
+      poll();
+      setInterval(poll, 5000);
+    })();
+  </script>
+</body>
+</html>
