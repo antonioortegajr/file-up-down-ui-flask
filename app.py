@@ -233,7 +233,7 @@ def _normalize_view_mode(raw) -> str:
 
 
 def _render_upload_page(
-    upload_message=None, upload_status="ok", view_mode="thumb"
+    upload_message=None, upload_status="ok", view_mode="thumb", describe_job_id=None
 ):
     return render_template(
         "library.html",
@@ -241,6 +241,7 @@ def _render_upload_page(
         upload_message=upload_message,
         upload_status=upload_status,
         view_mode=view_mode,
+        describe_job_id=describe_job_id,
     )
 
 
@@ -282,7 +283,33 @@ def upload_file():
         parts.append(
             "Skipped: " + "; ".join(f"{n} ({reason})" for n, reason in rejected)
         )
-    return _render_upload_page(" ".join(parts), "ok", vm), 200
+
+    describe_job_id = None
+    images_needing_desc = []
+    for fname in saved:
+        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+        if ext not in IMAGE_EXTENSIONS:
+            continue
+        fpath = Path(app.config["UPLOAD_FOLDER"]) / fname
+        if sidecar.read_desc_cache(fpath) is None:
+            images_needing_desc.append(str(fpath))
+
+    if images_needing_desc:
+        base_url = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+        model = os.environ.get("LMSTUDIO_MODEL", "")
+        api_key = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
+        if model:
+            lmstudio.ensure_ready(base_url, model)
+            describe_job_id = jobs.queue_job(
+                lmstudio.describe_new_photos,
+                images_needing_desc,
+                base_url,
+                model,
+                api_key,
+            )
+
+    msg = " ".join(parts)
+    return _render_upload_page(msg, "ok", vm, describe_job_id), 200
 
 
 @app.route("/delete", methods=["POST"])
