@@ -37,6 +37,7 @@ def meta_path(image_path: Path) -> Path:
 
 def desc_cache_path(image_path: Path) -> Path:
     """Return the path to the hidden description cache for an image."""
+    image_path = Path(image_path)
     cache_dir = image_path.parent / ".desc_cache"
     return cache_dir / (image_path.name + ".json")
 
@@ -153,7 +154,7 @@ def read_desc_cache(image_path: Path) -> dict | None:
     Read the hidden description cache (.desc_cache/photo.jpg.json).
     Returns None if no cache exists or if reading fails.
     """
-    cache = desc_cache_path(image_path)
+    cache = desc_cache_path(Path(image_path))
     if not cache.is_file():
         return None
     try:

@@ -183,6 +183,9 @@
       <p class="lede">Known people in your photo library</p>
     </header>
     {% if people %}
+    <div style="margin-bottom:1rem;">
+      <a class="btn" href="{{ url_for('new_person') }}" style="font-size:0.9rem;min-height:40px;padding:0 1rem;">+ Add person</a>
+    </div>
     <ul class="people-grid">
       {% for person in people %}
       <li>

@@ -228,7 +228,7 @@
         <form method="POST" action="{{ url_for('delete_person', person_id=person.id) }}" style="display:inline">
           <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this person?')">Delete</button>
         </form>
-        <a class="btn btn-secondary" href="#">Find in library</a>
+        <button class="btn btn-secondary" id="find-btn" onclick="findInLibrary()">Find in library</button>
       </div>
     </header>
 
@@ -266,5 +266,28 @@
       {% endif %}
     </div>
   </div>
+  <script>
+    function findInLibrary() {
+      var btn = document.getElementById('find-btn');
+      btn.disabled = true;
+      btn.textContent = 'Starting…';
+      fetch('{{ url_for("find_person_in_library", person_id=person.id) }}', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.job_id) {
+            window.location.href = '{{ url_for("confirm_person", person_id=person.id) }}?job=' + data.job_id;
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Find in library';
+            alert('Failed to start job: ' + JSON.stringify(data));
+          }
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Find in library';
+          alert('Error: ' + err);
+        });
+    }
+  </script>
 </body>
 </html>
