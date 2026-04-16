@@ -454,6 +454,89 @@ def person_detail(person_id):
     )
 
 
+@app.route("/people/<person_id>/confirm", methods=["GET", "POST"])
+def confirm_person(person_id):
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+
+    if not os.path.isfile(person_file):
+        abort(404)
+
+    with open(person_file, "r", encoding="utf-8") as f:
+        person = json.load(f)
+    person["id"] = person_id
+
+    if request.method == "GET":
+        job_id = request.args.get("job")
+        if not job_id:
+            abort(400)
+
+        job = jobs.get_job(job_id)
+        if not job:
+            abort(404)
+
+        job_data = job.to_dict()
+        if job_data["status"] not in ("done", "failed"):
+            return render_template(
+                "confirm_grid.html",
+                person=person,
+                waiting=True,
+                job_id=job_id,
+            )
+
+        if job_data["status"] == "failed":
+            abort(500)
+
+        result = job_data["result"]
+        matches_filenames = result.get("matches", [])
+        no_match_filenames = result.get("no_match", [])
+
+        job_logs = job_data.get("log", [])
+        file_to_answer = {}
+        for entry in job_logs:
+            if "..." in entry:
+                parts = entry.split("...", 1)
+                fname = parts[0].split("]", 1)[-1].strip()
+                answer = parts[1].strip() if len(parts) > 1 else ""
+                file_to_answer[fname] = answer
+
+        matches = []
+        for fname in matches_filenames:
+            matches.append({
+                "filename": fname,
+                "reason": file_to_answer.get(fname, "Match"),
+            })
+
+        no_match = []
+        for fname in no_match_filenames:
+            no_match.append({
+                "filename": fname,
+                "reason": file_to_answer.get(fname, "No match"),
+            })
+
+        return render_template(
+            "confirm_grid.html",
+            person=person,
+            waiting=False,
+            matches=matches,
+            no_match=no_match,
+        )
+
+    confirmed_filenames = request.form.getlist("confirmed")
+    person_name = person.get("name", "")
+
+    for fname in confirmed_filenames:
+        image_path = Path(UPLOAD_FOLDER) / fname
+        if image_path.is_file():
+            current = sidecar.read(image_path) or {}
+            people_list = current.get("people", [])
+            if person_name not in people_list:
+                people_list.append(person_name)
+            sidecar.merge(image_path, {"people": people_list})
+
+    return redirect(url_for("person_detail", person_id=person_id))
+
+
 @app.route("/people/<person_id>/add-photo", methods=["POST"])
 def add_person_photo(person_id):
     person_dir = os.path.join(PEOPLE_FOLDER, person_id)

@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>Confirm: {{ person.name | e }}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --danger: #d45b5b;
+      --success: #5bd47a;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .back:hover { color: var(--text); }
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .ref-photo {
+      width: 4rem;
+      height: 4rem;
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+      background: var(--bg-input);
+    }
+    .ref-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .ref-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .ref-section h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .section {
+      margin-bottom: 2rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .card {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .card input[type="checkbox"] {
+      width: 1.25rem;
+      height: 1.25rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .card-thumb {
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+      background: #0a0e14;
+      flex-shrink: 0;
+    }
+    .card-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .card-filename {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .card-reason {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.4;
+    }
+    .btn {
+      min-height: var(--tap-min);
+      padding: 0 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(0.98); }
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-elevated); border-color: var(--accent); }
+    .btn-full {
+      width: 100%;
+    }
+    .confirm-bar {
+      position: sticky;
+      bottom: max(1rem, env(safe-area-inset-bottom));
+      background: var(--bg);
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1.5rem;
+    }
+    .confirm-bar p {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .empty {
+      margin: 0;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .collapsible {
+      margin-top: 1rem;
+    }
+    .collapsible-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+    }
+    .collapsible-toggle:hover { color: var(--text); }
+    .collapsible-toggle svg {
+      transition: transform 0.2s;
+    }
+    .collapsible-toggle[aria-expanded="true"] svg {
+      transform: rotate(90deg);
+    }
+    .collapsible-content {
+      display: none;
+      padding-top: 0.5rem;
+    }
+    .collapsible-content.open {
+      display: block;
+    }
+    .waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      text-align: center;
+    }
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .waiting p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .waiting .progress-msg {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#" class="is-active">Confirm</a>
+    </nav>
+    <a class="back" href="{{ url_for('person_detail', person_id=person.id) }}">&larr; {{ person.name | e }}</a>
+
+    {% if waiting %}
+    <div class="waiting" id="waiting">
+      <div class="spinner"></div>
+      <p>Analyzing photos...</p>
+      <p class="progress-msg" id="progress-msg">Waiting for results</p>
+    </div>
+    <script>
+      (function() {
+        const jobId = {{ job_id | tojson }};
+        const progressMsg = document.getElementById('progress-msg');
+        let lastResult = null;
+
+        function poll() {
+          fetch('/api/jobs/' + jobId + '/result')
+            .then(r => r.json())
+            .then(data => {
+              if (data.status === 'done') {
+                if (data.result && !lastResult) {
+                  lastResult = data.result;
+                  window.location.reload();
+                }
+              } else if (data.status === 'failed') {
+                progressMsg.textContent = 'Error: ' + (data.error || 'Job failed');
+              } else {
+                progressMsg.textContent = 'Still analyzing...';
+                setTimeout(poll, 1000);
+              }
+            })
+            .catch(() => {
+              progressMsg.textContent = 'Checking again...';
+              setTimeout(poll, 2000);
+            });
+        }
+        poll();
+      })();
+    </script>
+    {% else %}
+    <header>
+      <h1>Confirm Matches</h1>
+      <p class="subtitle">Review and confirm which photos contain {{ person.name | e }}</p>
+    </header>
+
+    <div class="ref-section">
+      <div class="ref-photo">
+        <img src="{{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0]) }}" alt="Reference photo">
+      </div>
+      <h2>Reference photo</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('confirm_person', person_id=person.id) }}">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Potential Matches</h3>
+          <span class="count" id="match-count">{{ matches|length }} photo{% if matches|length != 1 %}s{% endif %}</span>
+        </div>
+        {% if matches %}
+        <div class="cards">
+          {% for item in matches %}
+          <div class="card">
+            <input type="checkbox" name="confirmed" value="{{ item.filename }}" id="match-{{ loop.index }}" checked>
+            <label class="card-thumb" for="match-{{ loop.index }}">
+              <img src="{{ url_for('uploaded_file', filename=item.filename) }}" alt="" loading="lazy">
+            </label>
+            <div class="card-body">
+              <div class="card-filename">{{ item.filename }}</div>
+              <div class="card-reason">{{ item.reason }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">No potential matches found</div>
+        {% endif %}
+      </div>
+
+      {% if no_match %}
+      <div class="section collapsible">
+        <button type="button" class="collapsible-toggle" aria-expanded="false" aria-controls="no-match-content">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 2l4 4-4 4"/></svg>
+          Not matched ({{ no_match|length }})
+        </button>
+        <div class="collapsible-content" id="no-match-content">
+          <div class="cards">
+            {% for item in no_match %}
+            <div class="card">
+              <input type="checkbox" name="confirmed" value="{{ item.filename }}" id="nomatch-{{ loop.index }}">
+              <label class="card-thumb" for="nomatch-{{ loop.index }}">
+                <img src="{{ url_for('uploaded_file', filename=item.filename) }}" alt="" loading="lazy">
+              </label>
+              <div class="card-body">
+                <div class="card-filename">{{ item.filename }}</div>
+                <div class="card-reason">{{ item.reason }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="confirm-bar">
+        <p id="confirm-count">{{ matches|length }} of {{ matches|length + no_match|length }} confirmed</p>
+        <button class="btn btn-full" type="submit">Confirm & Tag Photos</button>
+      </div>
+    </form>
+
+    <script>
+      (function() {
+        const checkboxes = document.querySelectorAll('input[name="confirmed"]');
+        const matchCount = {{ matches|length }};
+        const noMatchCount = {{ no_match|length }};
+        const countEl = document.getElementById('confirm-count');
+        const matchCountEl = document.getElementById('match-count');
+
+        function updateCount() {
+          const checked = document.querySelectorAll('input[name="confirmed"]:checked').length;
+          const total = matchCount + noMatchCount;
+          countEl.textContent = checked + ' of ' + total + ' confirmed';
+          matchCountEl.textContent = matchCount + ' photo' + (matchCount !== 1 ? 's' : '');
+        }
+
+        checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+
+        document.querySelector('.collapsible-toggle')?.addEventListener('click', function() {
+          const expanded = this.getAttribute('aria-expanded') === 'true';
+          this.setAttribute('aria-expanded', !expanded);
+          document.getElementById('no-match-content').classList.toggle('open');
+        });
+      })();
+    </script>
+    {% endif %}
+  </div>
+</body>
+</html>
