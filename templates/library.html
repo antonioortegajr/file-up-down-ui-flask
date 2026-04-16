@@ -310,6 +310,26 @@
       width: 100%;
       font-size: 0.8rem;
     }
+    .progress-bar {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #90caf9;
+      background: rgba(33, 150, 243, 0.15);
+      border: 1px solid rgba(33, 150, 243, 0.45);
+      display: none;
+    }
+    .progress-bar.visible { display: block; }
+    .progress-bar .progress-fill {
+      display: block;
+      height: 4px;
+      background: #42a5f5;
+      border-radius: 2px;
+      margin-top: 0.4rem;
+      transition: width 0.2s;
+    }
   </style>
 </head>
 <body>
@@ -337,6 +357,12 @@
         <p class="hint">Choose one or more files (e.g. Shift/Ctrl/Cmd+click). Stored on the server.</p>
       </form>
     </section>
+    {% if describe_job_id %}
+    <div id="describe-progress" class="progress-bar visible" role="status" aria-live="polite">
+      <span id="describe-msg">Describing photos…</span>
+      <div class="progress-fill" id="describe-fill" style="width:0%"></div>
+    </div>
+    {% endif %}
     <section aria-labelledby="files-heading">
       <h2 id="files-heading">Uploaded files</h2>
       <div class="view-switch" role="group" aria-label="How to show files">
@@ -425,6 +451,32 @@
       }
       poll();
       setInterval(poll, 5000);
+    })();
+    (function() {
+      var jobId = {{ describe_job_id|tojson }};
+      if (!jobId) return;
+      var bar = document.getElementById('describe-progress');
+      var msg = document.getElementById('describe-msg');
+      var fill = document.getElementById('describe-fill');
+      streamJob(jobId, function(data) {
+        if (data.message) {
+          msg.textContent = data.message;
+        }
+        if (typeof data.progress === 'number') {
+          fill.style.width = data.progress + '%';
+        }
+      }, function(done) {
+        if (done.error) {
+          msg.textContent = 'Failed: ' + done.error;
+          bar.style.color = '#ffcdd2';
+          bar.style.background = 'rgba(229, 57, 53, 0.15)';
+          bar.style.borderColor = 'rgba(229, 57, 53, 0.45)';
+        } else if (done.result && done.result.failed && done.result.failed.length) {
+          msg.textContent = 'Described ' + done.result.described.length + ', failed ' + done.result.failed.length;
+        } else {
+          bar.style.display = 'none';
+        }
+      });
     })();
   </script>
 </body>
