@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>{{ filename|e }} — File</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.45;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 36rem; margin: 0 auto; }
+    .back {
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .back:hover { color: var(--accent-hover); }
+    h1 {
+      font-size: clamp(1.1rem, 3.5vw, 1.35rem);
+      font-weight: 600;
+      margin: 0 0 1rem;
+      word-break: break-word;
+    }
+    .hero-img {
+      display: block;
+      width: 100%;
+      max-height: min(70dvh, 520px);
+      height: auto;
+      object-fit: contain;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #0a0e14;
+      margin-bottom: 1rem;
+    }
+    .no-preview {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 0.5rem;
+    }
+    dl.meta {
+      margin: 0;
+      display: grid;
+      grid-template-columns: minmax(6rem, 38%) 1fr;
+      gap: 0.35rem 0.75rem;
+      font-size: 0.85rem;
+    }
+    dl.meta dt {
+      margin: 0;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    dl.meta dd {
+      margin: 0;
+      word-break: break-word;
+    }
+    .banner {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.88rem;
+      color: #8b9aad;
+      background: rgba(139, 154, 173, 0.12);
+      border: 1px solid rgba(139, 154, 173, 0.35);
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    @media (min-width: 400px) {
+      .actions { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+    }
+    .btn {
+      min-height: var(--tap-min);
+      padding: 0 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      flex: 1;
+      min-width: 8rem;
+    }
+    .btn-download {
+      color: var(--bg);
+      background: var(--accent);
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-delete {
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.18);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+    }
+    .btn-delete:hover {
+      background: rgba(229, 57, 53, 0.32);
+    }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}" class="is-active">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#">Search</a>
+    </nav>
+    <a class="back" href="{{ url_for('upload_form', view=view_mode) }}">← All files</a>
+    <h1>{{ filename|e }}</h1>
+
+    {% if is_image %}
+    <img class="hero-img" src="{{ download_url }}" alt="{{ filename|e }}" width="800" height="600">
+    {% else %}
+    <div class="no-preview">Preview is not available for this file type. Use Download to open it.</div>
+    {% endif %}
+
+    {% if meta_note %}
+    <p class="banner" role="note">{{ meta_note }}</p>
+    {% endif %}
+
+    {% if lmstudio_meta %}
+    <div class="card">
+      <h2>Photo metadata</h2>
+      <dl class="meta">
+        {% if lmstudio_meta.get('people') %}
+        <dt>People</dt>
+        <dd>{{ lmstudio_meta.people | join(', ') | e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('event') %}
+        <dt>Event</dt>
+        <dd>{{ lmstudio_meta.event|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('date') %}
+        <dt>Date</dt>
+        <dd>{{ lmstudio_meta.date|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('location') %}
+        <dt>Location</dt>
+        <dd>{{ lmstudio_meta.location|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('has_people') is not none and lmstudio_meta.get('people_count') is not none %}
+        <dt>People count</dt>
+        <dd>{{ lmstudio_meta.people_count }} ({{ lmstudio_meta.get('distinct_people', '?') }} distinct)</dd>
+        {% endif %}
+        {% if lmstudio_meta.notes %}
+        <dt>Notes</dt>
+        <dd>{{ lmstudio_meta.notes|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('last_updated') %}
+        <dt>Last updated</dt>
+        <dd>{{ lmstudio_meta.last_updated|e }}</dd>
+        {% elif lmstudio_meta.get('generated_at') %}
+        <dt>Analyzed</dt>
+        <dd>{{ lmstudio_meta.generated_at|e }}</dd>
+        {% endif %}
+        {% if lmstudio_meta.get('model') %}
+        <dt>Model</dt>
+        <dd><code>{{ lmstudio_meta.model|e }}</code></dd>
+        {% endif %}
+      </dl>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>File</h2>
+      <dl class="meta">
+        {% for label, value in meta_general %}
+        <dt>{{ label|e }}</dt><dd>{{ value|e }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+
+    {% if meta_image %}
+    <div class="card">
+      <h2>Image</h2>
+      <dl class="meta">
+        {% for label, value in meta_image %}
+        <dt>{{ label|e }}</dt><dd>{{ value|e }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+    {% endif %}
+
+    {% if meta_exif %}
+    <div class="card">
+      <h2>EXIF &amp; tags</h2>
+      <dl class="meta">
+        {% for label, value in meta_exif %}
+        <dt>{{ label|e }}</dt><dd>{{ value|e }}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+    {% endif %}
+
+    <div class="actions">
+      <a class="btn btn-download" href="{{ download_url }}" download>Download</a>
+      <form method="post" action="/delete" style="flex:1;min-width:8rem;margin:0;display:flex;"
+            onsubmit="return confirm('Delete this file permanently?');">
+        <input type="hidden" name="filename" value="{{ filename|e }}">
+        <input type="hidden" name="view" value="{{ view_mode }}">
+        <button type="submit" class="btn btn-delete" style="width:100%">Delete</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
