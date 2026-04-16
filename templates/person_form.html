@@ -195,7 +195,7 @@
     <nav>
       <a href="{{ url_for('upload_form') }}">Library</a>
       <a href="{{ url_for('people_page') }}">People</a>
-      <a href="#">Search</a>
+      <a href="{{ url_for('search_page') }}">Search</a>
     </nav>
     <header>
       <h1>{{ 'Edit' if person else 'New' }} Person</h1>
