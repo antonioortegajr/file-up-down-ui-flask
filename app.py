@@ -573,6 +573,31 @@ def job_result(job_id):
     return jsonify({"status": data["status"], "result": data.get("result")}), 200
 
 
+@app.route("/api/people/<person_id>/find", methods=["POST"])
+def find_person_in_library(person_id):
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+
+    if not os.path.isfile(person_file):
+        abort(404)
+
+    base_url = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    model = os.environ.get("LMSTUDIO_MODEL", "")
+    api_key = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
+
+    job_id = jobs.queue_job(
+        lmstudio.match_person_in_library,
+        person_id,
+        PEOPLE_FOLDER,
+        UPLOAD_FOLDER,
+        base_url,
+        model,
+        api_key,
+    )
+
+    return jsonify({"job_id": job_id}), 202
+
+
 @app.route("/api/lmstudio/status")
 def lmstudio_status():
     base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")

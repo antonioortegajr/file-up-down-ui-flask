@@ -31,11 +31,17 @@ class Job:
     log: list[str] = field(default_factory=list)
     result: Any = None
     error: str | None = None
+    current_file: str | None = None
+    answer: str | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def set_progress(self, value: int, message: str = "") -> None:
+    def set_progress(self, value: int, message: str = "", current_file: str | None = None, answer: str | None = None) -> None:
         with self._lock:
             self.progress = min(100, max(0, value))
+            if current_file is not None:
+                self.current_file = current_file
+            if answer is not None:
+                self.answer = answer
             if message:
                 self.log.append(message)
 
@@ -63,6 +69,8 @@ class Job:
                 "log": list(self.log),
                 "result": self.result,
                 "error": self.error,
+                "current_file": self.current_file,
+                "answer": self.answer,
             }
 
 
@@ -125,6 +133,8 @@ def stream_progress(job_id: str) -> Iterator[dict]:
                 "message": "",
                 "result": current_result,
                 "error": current_error,
+                "current_file": job.current_file,
+                "answer": job.answer,
             }
             return
 
@@ -134,6 +144,8 @@ def stream_progress(job_id: str) -> Iterator[dict]:
                 "status": current_status.value,
                 "progress": current_progress,
                 "message": current_log[i],
+                "current_file": job.current_file,
+                "answer": job.answer,
             }
         seen_indices[job_id] = len(current_log)
 
