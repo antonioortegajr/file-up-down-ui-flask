@@ -598,10 +598,10 @@ def search_page():
     mode = request.args.get("mode", "text")
 
     if mode == "person":
-        return render_template("search.html", query=query, mode=mode, results=[])
+        return render_template("search.html", query=query, mode=mode, results=[], people=list_people())
 
     if not query:
-        return render_template("search.html", query=None, mode=mode, results=[])
+        return render_template("search.html", query=None, mode=mode, results=[], people=list_people())
 
     raw_results = sidecar.search(Path(UPLOAD_FOLDER), query)
     results = []
@@ -609,7 +609,7 @@ def search_page():
         match_reason = _find_match_reason(meta, query)
         results.append((path, meta, match_reason))
 
-    return render_template("search.html", query=query, mode=mode, results=results)
+    return render_template("search.html", query=query, mode=mode, results=results, people=list_people())
 
 
 @app.route("/file/<path:filename>")

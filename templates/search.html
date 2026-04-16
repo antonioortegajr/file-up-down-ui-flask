@@ -228,6 +228,98 @@
       border: 1px dashed var(--border);
       border-radius: calc(var(--radius) - 4px);
     }
+    .person-picker {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      align-items: stretch;
+    }
+    .person-picker select {
+      flex: 1;
+      min-height: var(--tap-min);
+      padding: 0.65rem 0.85rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      outline: none;
+      cursor: pointer;
+    }
+    .person-picker select:focus {
+      border-color: var(--accent);
+    }
+    .person-picker .person-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: calc(var(--radius) - 4px);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .person-picker .person-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .person-picker .btn-search {
+      min-height: var(--tap-min);
+      padding: 0 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .person-picker .btn-search:hover {
+      background: var(--accent-hover);
+    }
+    .person-picker .btn-search:active {
+      transform: scale(0.98);
+    }
+    .progress-bar {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #90caf9;
+      background: rgba(33, 150, 243, 0.15);
+      border: 1px solid rgba(33, 150, 243, 0.45);
+      display: none;
+    }
+    .progress-bar.visible { display: block; }
+    .progress-bar .progress-fill {
+      display: block;
+      height: 4px;
+      background: #42a5f5;
+      border-radius: 2px;
+      margin-top: 0.4rem;
+      transition: width 0.2s;
+    }
+    .progress-bar.error {
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.15);
+      border-color: rgba(229, 57, 53, 0.45);
+    }
+    .add-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--bg);
+      background: var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      text-decoration: none;
+    }
+    .add-link:hover { background: var(--accent-hover); }
   </style>
 </head>
 <body>
@@ -248,8 +340,31 @@
     </form>
     <div class="mode-toggle">
       <a href="{{ url_for('search_page') }}?mode=text{% if query %}&q={{ query | urlencode }}{% endif %}" class="{% if mode != 'person' %}is-active{% endif %}">Text search</a>
-      <a href="{{ url_for('search_page') }}?mode=person{% if query %}&q={{ query | urlencode }}{% endif %}">Find person</a>
+      <a href="{{ url_for('search_page') }}?mode=person{% if query %}&q={{ query | urlencode }}{% endif %}" class="{% if mode == 'person' %}is-active{% endif %}">Find person</a>
     </div>
+    {% if mode == 'person' %}
+    <section aria-labelledby="person-heading">
+      <h2 id="person-heading">Select a person</h2>
+      {% if people %}
+      <div class="person-picker">
+        <select id="person-select">
+          {% for person in people %}
+          <option value="{{ person.id }}" data-thumb="{{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0] if person.reference_photos else '') }}">{{ person.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="person-thumb" id="person-thumb"></div>
+        <button type="button" class="btn-search" id="search-btn">Search</button>
+      </div>
+      <div class="progress-bar" id="person-progress" role="status" aria-live="polite">
+        <span id="person-msg">Searching for matches…</span>
+        <div class="progress-fill" id="person-fill" style="width:0%"></div>
+      </div>
+      {% else %}
+      <p class="empty">Add a person first</p>
+      <a class="add-link" href="{{ url_for('new_person') }}">Add person</a>
+      {% endif %}
+    </section>
+    {% endif %}
     {% if query and mode != 'person' %}
     <section aria-labelledby="results-heading">
       <h2 id="results-heading">{{ results|length }} result{% if results|length != 1 %}s{% endif %}</h2>
@@ -285,5 +400,90 @@
     </section>
     {% endif %}
   </div>
+  {% if mode == 'person' and people %}
+  <script>
+    function streamJob(jobId, onProgress, onDone) {
+      var es = new EventSource('/api/jobs/' + encodeURIComponent(jobId));
+      es.onmessage = function(e) {
+        var data = JSON.parse(e.data);
+        if (data.error) {
+          onProgress && onProgress(data);
+          es.close();
+          onDone && onDone({error: data.error});
+          return;
+        }
+        onProgress && onProgress(data);
+        if (data.result !== undefined) {
+          es.close();
+          onDone && onDone({result: data.result});
+        }
+      };
+      es.onerror = function() { es.close(); };
+      return es;
+    }
+    (function() {
+      var select = document.getElementById('person-select');
+      var thumb = document.getElementById('person-thumb');
+      var btn = document.getElementById('search-btn');
+      var progress = document.getElementById('person-progress');
+      var msg = document.getElementById('person-msg');
+      var fill = document.getElementById('person-fill');
+
+      function updateThumb() {
+        var opt = select.options[select.selectedIndex];
+        var thumbUrl = opt.dataset.thumb;
+        if (thumbUrl) {
+          thumb.innerHTML = '<img src="' + thumbUrl + '" alt="">';
+        } else {
+          thumb.innerHTML = '';
+        }
+      }
+
+      select.addEventListener('change', updateThumb);
+      updateThumb();
+
+      btn.addEventListener('click', function() {
+        var personId = select.value;
+        btn.disabled = true;
+        btn.textContent = 'Searching…';
+        progress.classList.add('visible');
+        progress.classList.remove('error');
+        msg.textContent = 'Searching for matches…';
+        fill.style.width = '0%';
+
+        fetch('/api/people/' + encodeURIComponent(personId) + '/find', {
+          method: 'POST'
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var jobId = data.job_id;
+          streamJob(jobId, function(d) {
+            if (d.message) {
+              msg.textContent = d.message;
+            }
+            if (typeof d.progress === 'number') {
+              fill.style.width = d.progress + '%';
+            }
+          }, function(done) {
+            btn.disabled = false;
+            btn.textContent = 'Search';
+            if (done.error) {
+              progress.classList.add('error');
+              msg.textContent = 'Error: ' + done.error;
+            } else {
+              window.location.href = '/people/' + encodeURIComponent(personId) + '/confirm?job=' + encodeURIComponent(jobId);
+            }
+          });
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Search';
+          progress.classList.add('error');
+          msg.textContent = 'Error: ' + err.message;
+        });
+      });
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>
