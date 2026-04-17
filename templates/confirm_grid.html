@@ -310,6 +310,7 @@
       <a href="{{ url_for('people_page') }}">People</a>
       <a href="#" class="is-active">Confirm</a>
     </nav>
+    {% include 'lms_banner.html' %}
     <a class="back" href="{{ url_for('person_detail', person_id=person.id) }}">&larr; {{ person.name | e }}</a>
 
     {% if waiting %}
