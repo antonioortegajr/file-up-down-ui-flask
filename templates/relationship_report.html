@@ -89,7 +89,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 0.75rem;
       margin-bottom: 1.5rem;
     }
@@ -119,38 +119,6 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .filter {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .filter-btn {
-      padding: 0.4rem 0.75rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      font-family: inherit;
-      color: var(--text-muted);
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: calc(var(--radius) - 4px);
-      cursor: pointer;
-    }
-    .filter-btn.is-active {
-      color: var(--text);
-      background: var(--bg-elevated);
-      border-color: var(--accent);
-    }
-    .filter-btn:hover:not(.is-active) { color: var(--text); }
-    .download-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      margin-top: 1.5rem;
-      font-size: 0.85rem;
-      color: var(--accent);
-      text-decoration: none;
-    }
-    .download-link:hover { color: var(--accent-hover); text-decoration: underline; }
     .photos-list {
       display: flex;
       flex-direction: column;
@@ -205,9 +173,6 @@
     }
     .photo-item.confirmed {
       border-color: var(--success);
-    }
-    .photo-item:not(.confirmed) {
-      opacity: 0.6;
     }
     .photo-item.confirmed .photo-confidence-fill {
       background: var(--success);
@@ -279,29 +244,19 @@
         <div class="stat-value">{{ report.total_photos }}</div>
         <div class="stat-label">Reviewed</div>
       </div>
-      <div class="stat">
-        <div class="stat-value">{{ (report.confirmed_count / report.total_photos * 100) | int if report.total_photos > 0 else 0 }}%</div>
-        <div class="stat-label">Rate</div>
-      </div>
     </div>
 
     <a class="btn" href="{{ url_for('interactive_confirm', person_id=person.id) }}">Continue Confirming</a>
 
     <div style="margin-top: 1.5rem">
-      <div class="filter">
-        <button class="filter-btn is-active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="confirmed">Confirmed only</button>
-      </div>
       <h2 class="section-title">All Reviewed Photos</h2>
       {% if report.photos %}
       <div class="photos-list">
         {% for photo in report.photos %}
-        <div class="photo-item {% if photo.confirmed %}confirmed{% endif %}" data-confirmed="{{ 'true' if photo.confirmed else 'false' }}">
-          <a href="{{ url_for('file_detail', filename=photo.filename) }}">
-            <div class="photo-thumb">
-              <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="" loading="lazy">
-            </div>
-          </a>
+        <div class="photo-item {% if photo.confirmed %}confirmed{% endif %}">
+          <div class="photo-thumb">
+            <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" alt="" loading="lazy">
+          </div>
           <div class="photo-info">
             <div class="photo-name">
               {{ photo.filename }}
@@ -318,25 +273,7 @@
       {% else %}
       <div class="empty">No photos reviewed yet</div>
       {% endif %}
-      <a class="download-link" href="{{ url_for('relationship_map', person_id=person.id) }}">Download JSON</a>
     </div>
-
-    <script>
-      (function() {
-        var btns = document.querySelectorAll('.filter-btn');
-        var items = document.querySelectorAll('.photo-item');
-        btns.forEach(function(btn) {
-          btn.addEventListener('click', function() {
-            btns.forEach(function(b) { b.classList.remove('is-active'); });
-            btn.classList.add('is-active');
-            var filter = btn.dataset.filter;
-            items.forEach(function(item) {
-              item.style.display = (filter === 'confirmed' && item.dataset.confirmed !== 'true') ? 'none' : '';
-            });
-          });
-        });
-      })();
-    </script>
   </div>
 </body>
 </html>

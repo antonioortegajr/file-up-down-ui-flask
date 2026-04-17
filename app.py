@@ -507,11 +507,14 @@ def person_detail(person_id):
     tagged_results = sidecar.search(Path(UPLOAD_FOLDER), person.get("name", ""))
     tagged_photos = [(path, meta) for path, meta in tagged_results]
 
+    lms_connected = lmstudio.server_is_up()
+
     return render_template(
         "person_detail.html",
         person=person,
         tagged_photos=tagged_photos,
         tagged_count=len(tagged_photos),
+        lms_connected=lms_connected,
     )
 
 
