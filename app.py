@@ -19,7 +19,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from services import jobs, sidecar, lmstudio
+from services import confirmations, jobs, sidecar, lmstudio
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -604,6 +604,180 @@ def confirm_person(person_id):
         return redirect(url_for("walkthrough", step=5, person_id=person_id, person_name=person_name))
 
     return redirect(url_for("person_detail", person_id=person_id))
+
+
+def _get_person_or_404(person_id: str) -> dict:
+    """Resolve person_id to person dict, abort 404 if not found."""
+    person_dir = os.path.join(PEOPLE_FOLDER, person_id)
+    person_file = os.path.join(person_dir, "person.json")
+    if not os.path.isfile(person_file):
+        abort(404)
+    with open(person_file, "r", encoding="utf-8") as f:
+        person = json.load(f)
+    person["id"] = person_id
+    return person
+
+
+def _discover_photos_with_meta() -> list[str]:
+    """Discover all filenames in uploads/ that have a .meta.json sidecar."""
+    if not os.path.isdir(UPLOAD_FOLDER):
+        return []
+    return sorted(
+        f[:-9]
+        for f in os.listdir(UPLOAD_FOLDER)
+        if f.endswith(".meta.json")
+        and os.path.isfile(os.path.join(UPLOAD_FOLDER, f[:-9]))
+    )
+
+
+# ----------------------------------------------------------------------
+# Confirmation session API routes
+# ----------------------------------------------------------------------
+
+
+@app.route("/api/people/<person_id>/confirm-session", methods=["POST"])
+def create_confirm_session(person_id):
+    """Create or resume a confirmation session for a person."""
+    _get_person_or_404(person_id)
+
+    existing_session = confirmations.find_active_session(person_id)
+    if existing_session:
+        session = confirmations.get_session(person_id, existing_session)
+        queue = session.get("queue", []) if session else []
+        return jsonify({
+            "session_id": existing_session,
+            "resumed": True,
+            "total_in_queue": len(queue),
+        })
+
+    limit = request.json.get("limit", 200) if request.json else 200
+    photo_queue = request.json.get("photo_queue") if request.json else None
+
+    if photo_queue is None:
+        photo_queue = _discover_photos_with_meta()
+
+    photo_queue = photo_queue[:limit]
+
+    if not photo_queue:
+        return jsonify({
+            "error": "No photos with metadata found",
+        }), 400
+
+    session_id = confirmations.create_session(person_id, photo_queue)
+    return jsonify({
+        "session_id": session_id,
+        "resumed": False,
+        "total_in_queue": len(photo_queue),
+    })
+
+
+@app.route("/api/people/<person_id>/confirm-session/<session_id>")
+def get_confirm_session(person_id, session_id):
+    """Get full session data with computed progress fields."""
+    _get_person_or_404(person_id)
+
+    session = confirmations.get_session(person_id, session_id)
+    if session is None:
+        return jsonify({"error": "Session not found"}), 404
+
+    queue = session.get("queue", [])
+    answered = session.get("answered", {})
+    current_index = session.get("current_index", 0)
+
+    answered_count = len(answered)
+    remaining_count = len(queue) - current_index
+    current_filename = queue[current_index] if current_index < len(queue) else None
+
+    return jsonify({
+        "session_id": session["session_id"],
+        "person_id": session["person_id"],
+        "created_at": session["created_at"],
+        "last_active": session["last_active"],
+        "status": session["status"],
+        "queue": queue,
+        "answered": answered,
+        "current_index": current_index,
+        "progress": {
+            "answered_count": answered_count,
+            "remaining_count": remaining_count,
+            "current_filename": current_filename,
+        },
+    })
+
+
+@app.route("/api/people/<person_id>/confirm-session/<session_id>/vote", methods=["POST"])
+def vote_in_session(person_id, session_id):
+    """Record a vote and advance the session."""
+    person = _get_person_or_404(person_id)
+
+    session = confirmations.get_session(person_id, session_id)
+    if session is None:
+        return jsonify({"error": "Session not found"}), 404
+
+    if not request.json:
+        return jsonify({"error": "Request body required"}), 400
+
+    filename = request.json.get("filename")
+    vote = request.json.get("vote")
+
+    if not filename or not vote:
+        return jsonify({"error": "filename and vote are required"}), 400
+
+    if vote not in ("yes", "no", "skip"):
+        return jsonify({"error": "vote must be 'yes', 'no', or 'skip'"}), 400
+
+    current_index = session.get("current_index", 0)
+    queue = session.get("queue", [])
+
+    if current_index >= len(queue) or queue[current_index] != filename:
+        return jsonify({"error": "Filename does not match current session position"}), 400
+
+    confirmed = False
+    if vote == "yes":
+        photo = confirmations.record_vote(person_id, session_id, filename, "yes")
+        if photo.get("confirmed"):
+            confirmed = True
+            sidecar.merge_confirmation_score(
+                str(Path(UPLOAD_FOLDER) / filename),
+                person['name'],
+                photo.get("confidence", 0.0),
+                photo.get("yes_votes", 0) + photo.get("no_votes", 0),
+            )
+    elif vote == "no":
+        confirmations.record_vote(person_id, session_id, filename, "no")
+
+    session["answered"][filename] = vote
+    confirmations.save_session(person_id, session_id, session)
+
+    session = confirmations.advance_session(person_id, session_id)
+    new_index = session.get("current_index", 0)
+    session_done = new_index >= len(queue)
+    next_filename = queue[new_index] if not session_done else None
+
+    confirmations_data = confirmations.read_confirmations(person_id)
+    photos = confirmations_data.get("photos", {})
+    photo_data = photos.get(filename, {})
+    yes_votes = photo_data.get("yes_votes", 0)
+    no_votes = photo_data.get("no_votes", 0)
+    confidence = photo_data.get("confidence", 0.0)
+
+    return jsonify({
+        "next_filename": next_filename,
+        "session_done": session_done,
+        "confidence": confidence,
+        "yes_votes": yes_votes,
+        "no_votes": no_votes,
+        "confirmed": confirmed,
+    })
+
+
+@app.route("/api/people/<person_id>/relationship-map")
+def relationship_map(person_id):
+    """Return confirmation report for a person."""
+    _get_person_or_404(person_id)
+
+    report = confirmations.build_report(person_id)
+    return jsonify(report)
 
 
 @app.route("/people/<person_id>/add-photo", methods=["POST"])
