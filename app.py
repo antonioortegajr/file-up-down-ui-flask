@@ -688,6 +688,12 @@ def get_confirm_session(person_id, session_id):
     remaining_count = len(queue) - current_index
     current_filename = queue[current_index] if current_index < len(queue) else None
 
+    match_reason = None
+    if current_filename:
+        meta = sidecar.read(Path(UPLOAD_FOLDER) / current_filename)
+        if meta:
+            match_reason = meta.get("match_reason")
+
     return jsonify({
         "session_id": session["session_id"],
         "person_id": session["person_id"],
@@ -697,6 +703,8 @@ def get_confirm_session(person_id, session_id):
         "queue": queue,
         "answered": answered,
         "current_index": current_index,
+        "current_filename": current_filename,
+        "match_reason": match_reason,
         "progress": {
             "answered_count": answered_count,
             "remaining_count": remaining_count,
@@ -769,6 +777,30 @@ def vote_in_session(person_id, session_id):
         "no_votes": no_votes,
         "confirmed": confirmed,
     })
+
+
+@app.route("/people/<person_id>/interactive-confirm")
+def interactive_confirm(person_id):
+    """Render the interactive one-photo-at-a-time confirmation UI."""
+    person = _get_person_or_404(person_id)
+    session_id = request.args.get("session", "")
+    return render_template(
+        "interactive_confirm.html",
+        person=person,
+        session_id=session_id,
+    )
+
+
+@app.route("/people/<person_id>/relationship-report")
+def relationship_report(person_id):
+    """Render a confirmation report for a person."""
+    person = _get_person_or_404(person_id)
+    report = confirmations.build_report(person_id)
+    return render_template(
+        "relationship_report.html",
+        person=person,
+        report=report,
+    )
 
 
 @app.route("/api/people/<person_id>/relationship-map")
