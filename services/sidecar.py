@@ -186,3 +186,24 @@ def read_with_desc_fallback(image_path: Path) -> dict | None:
     if meta:
         return meta
     return read_desc_cache(image_path)
+
+
+def merge_confirmation_score(
+    image_path: str,
+    person_name: str,
+    confidence: float,
+    votes: int,
+) -> None:
+    """
+    Write or update the confirmation_scores entry for a person in the photo's
+    .meta.json sidecar.
+
+    Resulting sidecar fragment:
+        { "confirmation_scores": { "Antonio": { "confidence": 0.75, "votes": 4 } } }
+
+    Calls sidecar.merge() internally — does not duplicate its write logic.
+    """
+    existing = read(Path(image_path)) or {}
+    confirmation_scores: dict = existing.get("confirmation_scores", {})
+    confirmation_scores[person_name] = {"confidence": confidence, "votes": votes}
+    merge(Path(image_path), {"confirmation_scores": confirmation_scores})
