@@ -1,0 +1,123 @@
+<style>
+  #lms-banner {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  #lms-banner.visible { display: flex; }
+  .lms-banner--ready { color: #c8e6c9; background: rgba(76, 175, 80, 0.15); border: 1px solid rgba(76, 175, 80, 0.45); }
+  .lms-banner--starting { color: #fff9c4; background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.45); }
+  .lms-banner--offline { color: #ffcdd2; background: rgba(229, 57, 53, 0.15); border: 1px solid rgba(229, 57, 53, 0.45); }
+  #lms-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f44336;
+    flex-shrink: 0;
+  }
+  .lms-banner--ready #lms-dot { background: #4caf50; }
+  .lms-banner--starting #lms-dot { background: #ffc107; }
+  #lms-label { flex: 1; }
+  #lms-dismiss {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    opacity: 0.7;
+  }
+  #lms-dismiss:hover { opacity: 1; }
+  #lms-start {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: #0f1419;
+    background: #ffc107;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #lms-start:hover { background: #ffca28; }
+  #lms-start:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+<div id="lms-banner" role="status" aria-live="polite">
+  <span id="lms-dot"></span>
+  <span id="lms-label">LM Studio offline</span>
+  <button id="lms-start" type="button">Start</button>
+  <button id="lms-dismiss" type="button" aria-label="Dismiss">&times;</button>
+</div>
+<script>
+(function() {
+  var banner = document.getElementById('lms-banner');
+  var dot = document.getElementById('lms-dot');
+  var label = document.getElementById('lms-label');
+  var startBtn = document.getElementById('lms-start');
+  var dismissBtn = document.getElementById('lms-dismiss');
+  var dismissed = false;
+
+  dismissBtn.addEventListener('click', function() {
+    dismissed = true;
+    banner.classList.remove('visible');
+  });
+
+  startBtn.addEventListener('click', function() {
+    startBtn.disabled = true;
+    fetch('/api/lmstudio/start', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.status === 'starting') {
+          setStatus('starting');
+        }
+      })
+      .catch(function() {
+        startBtn.disabled = false;
+      });
+  });
+
+  function setStatus(state) {
+    banner.classList.remove('visible', 'lms-banner--ready', 'lms-banner--starting', 'lms-banner--offline');
+    if (state === 'ready') {
+      banner.classList.add('visible', 'lms-banner--ready');
+      label.textContent = 'LM Studio ready';
+      startBtn.style.display = 'none';
+    } else if (state === 'starting') {
+      banner.classList.add('visible', 'lms-banner--starting');
+      label.textContent = 'LM Studio starting...';
+      startBtn.style.display = 'none';
+    } else {
+      banner.classList.add('visible', 'lms-banner--offline');
+      label.textContent = 'LM Studio offline';
+      startBtn.style.display = 'inline-block';
+      startBtn.disabled = false;
+    }
+  }
+
+  function poll() {
+    fetch('/api/lmstudio/status')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.server === 'up' && d.model === 'loaded') {
+          setStatus('ready');
+        } else if (d.server === 'up') {
+          setStatus('starting');
+        } else {
+          setStatus('offline');
+        }
+      })
+      .catch(function() {
+        setStatus('offline');
+      });
+  }
+
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>

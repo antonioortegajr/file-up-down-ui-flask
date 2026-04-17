@@ -182,6 +182,7 @@
       <a href="{{ url_for('people_page') }}">People</a>
       <a href="{{ url_for('search_page') }}">Search</a>
     </nav>
+    {% include 'lms_banner.html' %}
     <a class="back" href="{{ url_for('upload_form', view=view_mode) }}">← All files</a>
     <h1>{{ filename|e }}</h1>
 
