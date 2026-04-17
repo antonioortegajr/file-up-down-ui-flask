@@ -708,9 +708,9 @@ def get_confirm_session(person_id, session_id):
 @app.route("/api/people/<person_id>/confirm-session/<session_id>/vote", methods=["POST"])
 def vote_in_session(person_id, session_id):
     """Record a vote and advance the session."""
-    _get_person_or_404(person_id)
+    person = _get_person_or_404(person_id)
 
-    session = confirmations.get_session(person_id, session_id)
+    session = confirmations.get_session(person, session_id)
     if session is None:
         return jsonify({"error": "Session not found"}), 404
 
@@ -738,8 +738,10 @@ def vote_in_session(person_id, session_id):
         if photo.get("confirmed"):
             confirmed = True
             sidecar.merge_confirmation_score(
-                Path(UPLOAD_FOLDER) / filename,
+                str(Path(UPLOAD_FOLDER) / filename),
+                person['name'],
                 photo.get("confidence", 0.0),
+                photo.get("yes_votes", 0) + photo.get("no_votes", 0),
             )
     elif vote == "no":
         confirmations.record_vote(person_id, session_id, filename, "no")
