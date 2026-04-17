@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>Confirm: {{ person.name | e }}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --danger: #d45b5b;
+      --danger-hover: #e87c7c;
+      --success: #5bd47a;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .back:hover { color: var(--text); }
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .photo-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .photo-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-card-label {
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ai-hint {
+      display: none;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .ai-hint.visible { display: block; }
+    .ai-hint strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .confidence-section {
+      display: none;
+      margin-bottom: 1rem;
+    }
+    .confidence-section.visible { display: block; }
+    .confidence-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .confidence-bar {
+      height: 0.5rem;
+      background: var(--bg-input);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    .confidence-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      transition: width 0.3s ease;
+    }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn {
+      flex: 1;
+      min-height: var(--tap-min);
+      padding: 0 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-elevated); border-color: var(--accent); }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-skip {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      flex: 0.5;
+    }
+    .btn-skip:hover { color: var(--text); border-color: var(--text-muted); }
+    .completion {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      text-align: center;
+    }
+    .completion.visible { display: flex; }
+    .completion-icon {
+      width: 4rem;
+      height: 4rem;
+      margin-bottom: 1rem;
+      color: var(--success);
+    }
+    .completion h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+    }
+    .completion p {
+      margin: 0 0 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .completion .btn { width: 100%; margin-bottom: 0.5rem; }
+    .keyboard-hint {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+    .waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      text-align: center;
+    }
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .waiting p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="#" class="is-active">Confirm</a>
+    </nav>
+    {% include 'lms_banner.html' %}
+    <a class="back" href="{{ url_for('person_detail', person_id=person.id) }}">&larr; {{ person.name | e }}</a>
+
+    <div id="app">
+      <div class="waiting" id="loading">
+        <div class="spinner"></div>
+        <p>Loading session...</p>
+      </div>
+
+      <div id="session" style="display:none">
+        <div class="progress" id="progress"></div>
+
+        <div class="photo-grid">
+          <div class="photo-card">
+            <img id="ref-photo" src="{{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0]) }}" alt="Reference photo">
+            <div class="photo-card-label">Reference: {{ person.name | e }}</div>
+          </div>
+          <div class="photo-card">
+            <img id="candidate-photo" src="" alt="Candidate photo">
+            <div class="photo-card-label" id="candidate-label"></div>
+          </div>
+        </div>
+
+        <div class="ai-hint" id="ai-hint">
+          <strong>AI hint:</strong> <span id="ai-hint-text"></span>
+        </div>
+
+        <div class="confidence-section" id="confidence-section">
+          <div class="confidence-label">
+            <span>Confidence</span>
+            <span id="vote-counts"></span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="confidence-fill"></div>
+          </div>
+        </div>
+
+        <div class="actions" id="actions">
+          <button class="btn btn-skip" id="skip-btn" type="button">Skip</button>
+          <button class="btn btn-danger" id="no-btn" type="button">&#10060; No</button>
+          <button class="btn" id="yes-btn" type="button">&#10004; Yes</button>
+        </div>
+
+        <div class="keyboard-hint">
+          Press <kbd>Y</kbd> Yes &middot; <kbd>N</kbd> No &middot; <kbd>S</kbd> Skip
+        </div>
+      </div>
+
+      <div class="completion" id="completion">
+        <svg class="completion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <h2>Session complete!</h2>
+        <p id="completion-summary"></p>
+        <a class="btn" id="report-btn" href="{{ url_for('relationship_report', person_id=person.id) }}">View Relationship Report</a>
+        <button class="btn btn-secondary" id="restart-btn" type="button">Start New Session</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const personId = {{ person.id | tojson }};
+      const initialSessionId = {{ session_id | tojson }};
+      const refPhotoUrl = {{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0]) | tojson }};
+
+      const loading = document.getElementById('loading');
+      const session = document.getElementById('session');
+      const completion = document.getElementById('completion');
+      const progress = document.getElementById('progress');
+      const candidatePhoto = document.getElementById('candidate-photo');
+      const candidateLabel = document.getElementById('candidate-label');
+      const aiHint = document.getElementById('ai-hint');
+      const aiHintText = document.getElementById('ai-hint-text');
+      const confidenceSection = document.getElementById('confidence-section');
+      const confidenceFill = document.getElementById('confidence-fill');
+      const voteCounts = document.getElementById('vote-counts');
+      const actions = document.getElementById('actions');
+      const skipBtn = document.getElementById('skip-btn');
+      const noBtn = document.getElementById('no-btn');
+      const yesBtn = document.getElementById('yes-btn');
+      const completionSummary = document.getElementById('completion-summary');
+      const restartBtn = document.getElementById('restart-btn');
+
+      let sessionId = null;
+      let currentFilename = null;
+      let sessionDone = false;
+      let isFetching = false;
+
+      function setButtonsDisabled(disabled) {
+        skipBtn.disabled = disabled;
+        noBtn.disabled = disabled;
+        yesBtn.disabled = disabled;
+      }
+
+      function updateProgress(data) {
+        const answered = data.progress.answered_count;
+        const total = data.queue.length;
+        progress.textContent = answered + ' of ' + total + ' answered';
+      }
+
+      function showConfidenceBar(yesVotes, noVotes) {
+        const total = yesVotes + noVotes;
+        if (total === 0) {
+          confidenceSection.classList.remove('visible');
+          return;
+        }
+        const confidence = yesVotes / total;
+        confidenceFill.style.width = (confidence * 100) + '%';
+        voteCounts.textContent = yesVotes + 'Y / ' + noVotes + 'N';
+        confidenceSection.classList.add('visible');
+      }
+
+      function showAiHint(reason) {
+        if (reason) {
+          aiHintText.textContent = reason;
+          aiHint.classList.add('visible');
+        } else {
+          aiHint.classList.remove('visible');
+        }
+      }
+
+      function loadPhoto(data) {
+        currentFilename = data.current_filename;
+        if (!currentFilename) {
+          showCompletion();
+          return;
+        }
+
+        candidatePhoto.src = '/uploads/' + currentFilename;
+        candidateLabel.textContent = currentFilename;
+        updateProgress(data);
+
+        showAiHint(data.match_reason || null);
+        confidenceSection.classList.remove('visible');
+      }
+
+      function showCompletion() {
+        sessionDone = true;
+        session.style.display = 'none';
+        completion.classList.add('visible');
+
+        fetch('/api/people/' + personId + '/relationship-map')
+          .then(function(r) { return r.json(); })
+          .then(function(report) {
+            completionSummary.textContent =
+              report.confirmed_count + ' photos confirmed out of ' + report.total_photos + ' reviewed.';
+          })
+          .catch(function() {
+            completionSummary.textContent = 'Session complete.';
+          });
+      }
+
+      function startOrResumeSession() {
+        if (initialSessionId) {
+          sessionId = initialSessionId;
+          loadSession();
+          return;
+        }
+
+        const stored = sessionStorage.getItem('confirm_session_' + personId);
+        if (stored) {
+          sessionId = stored;
+          loadSession();
+          return;
+        }
+
+        createSession();
+      }
+
+      function createSession() {
+        fetch('/api/people/' + personId + '/confirm-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            sessionId = data.session_id;
+            sessionStorage.setItem('confirm_session_' + personId, sessionId);
+            loadSession();
+          })
+          .catch(function(err) {
+            console.error('Failed to create session:', err);
+          });
+      }
+
+      function loadSession() {
+        fetch('/api/people/' + personId + '/confirm-session/' + sessionId)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error) {
+              createSession();
+              return;
+            }
+            loading.style.display = 'none';
+            session.style.display = 'block';
+
+            if (data.status === 'complete') {
+              showCompletion();
+            } else {
+              loadPhoto(data);
+            }
+          })
+          .catch(function(err) {
+            console.error('Failed to load session:', err);
+          });
+      }
+
+      function submitVote(vote) {
+        if (!currentFilename || sessionDone || isFetching) return;
+        isFetching = true;
+        setButtonsDisabled(true);
+
+        fetch('/api/people/' + personId + '/confirm-session/' + sessionId + '/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: currentFilename, vote: vote })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.confidence !== undefined) {
+              showConfidenceBar(data.yes_votes, data.no_votes);
+            }
+
+            if (data.session_done) {
+              showCompletion();
+            } else if (data.next_filename) {
+              candidatePhoto.src = '/uploads/' + data.next_filename;
+              candidateLabel.textContent = data.next_filename;
+              currentFilename = data.next_filename;
+
+              fetch('/api/people/' + personId + '/confirm-session/' + sessionId)
+                .then(function(r) { return r.json(); })
+                .then(function(sessionData) {
+                  updateProgress(sessionData);
+                  showAiHint(sessionData.match_reason || null);
+                  showConfidenceBar(0, 0);
+                });
+            }
+          })
+          .catch(function(err) {
+            console.error('Failed to submit vote:', err);
+          })
+          .finally(function() {
+            isFetching = false;
+            setButtonsDisabled(false);
+          });
+      }
+
+      skipBtn.addEventListener('click', function() { submitVote('skip'); });
+      noBtn.addEventListener('click', function() { submitVote('no'); });
+      yesBtn.addEventListener('click', function() { submitVote('yes'); });
+
+      restartBtn.addEventListener('click', function() {
+        sessionStorage.removeItem('confirm_session_' + personId);
+        sessionId = null;
+        sessionDone = false;
+        completion.classList.remove('visible');
+        session.style.display = 'block';
+        loading.style.display = 'block';
+        createSession();
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (isFetching || sessionDone) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        switch(e.key.toLowerCase()) {
+          case 'y':
+            submitVote('yes');
+            break;
+          case 'n':
+            submitVote('no');
+            break;
+          case 's':
+            submitVote('skip');
+            break;
+        }
+      });
+
+      startOrResumeSession();
+    })();
+  </script>
+</body>
+</html>
