@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>Get Started</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --success: #5bd47a;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    .skip {
+      display: block;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .skip:hover { color: var(--text); }
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .step-dot.active { background: var(--accent); }
+    .step-dot.done { background: var(--success); }
+    .icon-wrap {
+      width: 5rem;
+      height: 5rem;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+    }
+    .icon-wrap svg {
+      width: 2.5rem;
+      height: 2.5rem;
+      color: var(--accent);
+    }
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 1.8rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.75rem;
+      text-align: center;
+    }
+    .lede {
+      margin: 0 0 2rem;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .btn {
+      min-height: var(--tap-min);
+      padding: 0 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(0.98); }
+    .btn-success {
+      background: var(--success);
+    }
+    .btn-success:hover { background: #6fe88a; }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+    input[type="file"] {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+      margin-right: 0.5rem;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8rem;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    input[type="file"]::file-selector-button:hover {
+      background: var(--accent-hover);
+    }
+    .photo-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .back-link:hover { color: var(--text); }
+    .progress-wrap {
+      margin-bottom: 2rem;
+    }
+    .progress-status {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+    .progress-track {
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      margin: 2rem auto 1rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .done-icon {
+      width: 5rem;
+      height: 5rem;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(91, 212, 122, 0.15);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+    }
+    .done-icon svg {
+      width: 2.5rem;
+      height: 2.5rem;
+      color: var(--success);
+    }
+    .done-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 2rem;
+    }
+    .done-actions .btn {
+      min-height: 50px;
+    }
+    .done-actions .btn-outline {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .done-actions .btn-outline:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .photo-count {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--success);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .photo-count-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    {% if step > 1 %}
+    <a class="skip" href="{{ url_for('upload_form') }}">Skip walkthrough</a>
+    {% endif %}
+
+    <div class="step-indicator">
+      {% for i in range(1, 6) %}
+      <span class="step-dot {% if i < step %}done{% elif i == step %}active{% endif %}"></span>
+      {% endfor %}
+    </div>
+
+    {% if step == 1 %}
+    <div class="icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+    <h1>Tag who's in your photos</h1>
+    <p class="lede">You'll need one clear reference photo of the person. We'll search your library and find matching photos automatically.</p>
+    <a class="btn" href="{{ url_for('walkthrough', step=2) }}">Get started</a>
+    {% elif step == 2 %}
+    <a class="back-link" href="{{ url_for('walkthrough', step=1) }}">&larr; Back</a>
+    <h1>Add a person</h1>
+    <p class="lede">Enter their name and upload a clear reference photo.</p>
+    {% if error %}
+    <div style="background: rgba(212, 91, 91, 0.15); border: 1px solid #d45b5b; border-radius: 8px; padding: 0.65rem 0.75rem; font-size: 0.9rem; color: #d45b5b; margin-bottom: 1rem;">{{ error | e }}</div>
+    {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required placeholder="Enter person's name">
+      </div>
+      <div class="form-group">
+        <label for="photos">Reference Photo</label>
+        <input type="file" id="photos" name="photos" accept=".jpg,.jpeg,.png,.gif" required>
+        <p class="photo-hint">One clear, frontal photo works best.</p>
+      </div>
+      <button class="btn" type="submit">Continue</button>
+    </form>
+    {% elif step == 3 %}
+    <a class="back-link" href="{{ url_for('walkthrough', step=2) }}">&larr; Back</a>
+    <h1>Finding matches for {{ person_name }}</h1>
+    <p class="lede">Searching your library for photos containing this person...</p>
+    <div class="progress-wrap">
+      <p class="progress-status" id="progress-status">Starting search...</p>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div class="spinner"></div>
+    <script>
+      (function() {
+        var statusEl = document.getElementById('progress-status');
+        var fillEl = document.getElementById('progress-fill');
+        var personId = {{ person_id | tojson }};
+
+        fetch('/api/people/' + personId + '/find', { method: 'POST' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var jobId = data.job_id;
+            var es = new EventSource('/api/jobs/' + jobId);
+            es.onmessage = function(e) {
+              var d = JSON.parse(e.data);
+              if (d.message) {
+                statusEl.textContent = d.message;
+              }
+              if (typeof d.progress === 'number') {
+                fillEl.style.width = d.progress + '%';
+              }
+              if (d.result !== undefined) {
+                es.close();
+                window.location.href = '/people/' + personId + '/confirm?job=' + jobId + '&walkthrough=1';
+              }
+            };
+            es.onerror = function() {
+              es.close();
+              statusEl.textContent = 'Error connecting to server. Retrying...';
+              setTimeout(function() {
+                window.location.reload();
+              }, 2000);
+            };
+          })
+          .catch(function(err) {
+            statusEl.textContent = 'Error: Could not start search. Please try again.';
+            console.error(err);
+          });
+      })();
+    </script>
+    {% elif step == 5 %}
+    <div class="done-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h1>All done!</h1>
+    <p class="photo-count">{{ tagged_count }}</p>
+    <p class="photo-count-label">photo{{ 's' if tagged_count != 1 else '' }} tagged</p>
+    <div class="done-actions">
+      <a class="btn btn-success" href="{{ url_for('person_detail', person_id=person_id) }}">View {{ person_name }}'s photos</a>
+      <a class="btn btn-outline" href="{{ url_for('walkthrough', step=2) }}">Tag another person</a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
