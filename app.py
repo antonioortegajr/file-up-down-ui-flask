@@ -578,6 +578,15 @@ def confirm_person(person_id):
             })
 
         walkthrough = request.args.get("walkthrough") == "1"
+
+        confidence_scores = {}
+        confirm_data = confirmations.read_confirmations(person_id)
+        for fname, photo in confirm_data.get("photos", {}).items():
+            confidence_scores[fname] = {
+                "confidence": photo.get("confidence", 0.0),
+                "votes": photo.get("yes_votes", 0) + photo.get("no_votes", 0),
+            }
+
         return render_template(
             "confirm_grid.html",
             person=person,
@@ -585,6 +594,7 @@ def confirm_person(person_id):
             matches=matches,
             no_match=no_match,
             walkthrough=walkthrough,
+            confidence_scores=confidence_scores,
         )
 
     confirmed_filenames = request.form.getlist("confirmed")

@@ -173,6 +173,25 @@
     }
     nav a + a { border-left: 1px solid var(--border); }
     nav a:hover:not(.is-active) { color: var(--text); }
+    .conf-score-person {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .confidence-bar {
+      height: 0.5rem;
+      background: var(--bg-input);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    .confidence-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -236,6 +255,23 @@
         <dd><code>{{ lmstudio_meta.model|e }}</code></dd>
         {% endif %}
       </dl>
+    </div>
+    {% endif %}
+
+    {% if lmstudio_meta.get('confirmation_scores') %}
+    <div class="card">
+      <h2>Confirmation Scores</h2>
+      {% for person_name, data in lmstudio_meta.confirmation_scores.items() %}
+      <div style="margin-bottom:0.75rem">
+        <div class="conf-score-person">
+          <span>{{ person_name | e }}</span>
+          <span>{{ (data.confidence * 100) | round | int }}% ({{ data.votes }} votes)</span>
+        </div>
+        <div class="confidence-bar">
+          <div class="confidence-fill" style="width: {{ data.confidence * 100 }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
 

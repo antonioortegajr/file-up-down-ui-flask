@@ -187,6 +187,12 @@
       margin-top: 0.25rem;
       line-height: 1.4;
     }
+    .card-badge {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      opacity: 0.85;
+    }
     .btn {
       min-height: var(--tap-min);
       padding: 0 1.1rem;
@@ -382,6 +388,9 @@
             <div class="card-body">
               <div class="card-filename">{{ item.filename }}</div>
               <div class="card-reason">{{ item.reason }}</div>
+              {% if confidence_scores.get(item.filename) %}
+              <div class="card-badge">{{ (confidence_scores[item.filename].confidence * 100) | round | int }}% ({{ confidence_scores[item.filename].votes }} votes)</div>
+              {% endif %}
             </div>
           </div>
           {% endfor %}
@@ -408,6 +417,9 @@
               <div class="card-body">
                 <div class="card-filename">{{ item.filename }}</div>
                 <div class="card-reason">{{ item.reason }}</div>
+                {% if confidence_scores.get(item.filename) %}
+                <div class="card-badge">{{ (confidence_scores[item.filename].confidence * 100) | round | int }}% ({{ confidence_scores[item.filename].votes }} votes)</div>
+                {% endif %}
               </div>
             </div>
             {% endfor %}
