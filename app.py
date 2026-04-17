@@ -710,7 +710,7 @@ def vote_in_session(person_id, session_id):
     """Record a vote and advance the session."""
     person = _get_person_or_404(person_id)
 
-    session = confirmations.get_session(person, session_id)
+    session = confirmations.get_session(person_id, session_id)
     if session is None:
         return jsonify({"error": "Session not found"}), 404
 
