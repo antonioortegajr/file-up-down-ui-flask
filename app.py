@@ -247,6 +247,8 @@ def _render_upload_page(
 
 @app.route("/", methods=["GET"])
 def upload_form():
+    if not list_people():
+        return redirect(url_for("walkthrough", step=1))
     vm = _normalize_view_mode(request.args.get("view"))
     return _render_upload_page(view_mode=vm)
 
@@ -347,10 +349,69 @@ def list_files():
 
 @app.route("/people")
 def people_page():
+    if request.method == "GET" and not list_people():
+        return redirect(url_for("walkthrough", step=1))
     people = list_people()
     for person in people:
         person["tagged_count"] = count_tagged_photos(person.get("name", ""))
     return render_template("people.html", people=people)
+
+
+@app.route("/walkthrough", methods=["GET", "POST"])
+def walkthrough():
+    step = int(request.args.get("step", 1))
+    person_id = request.args.get("person_id")
+    person_name = request.args.get("person_name", "")
+
+    if step == 1:
+        return render_template("walkthrough.html", step=1)
+
+    if step == 2:
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            if not name:
+                return render_template("walkthrough.html", step=2, error="Name is required.")
+            photos = [f for f in request.files.getlist("photos") if f and f.filename]
+            if not photos:
+                return render_template("walkthrough.html", step=2, error="At least one reference photo is required.")
+
+            pid = str(uuid.uuid4())
+            person_dir = os.path.join(PEOPLE_FOLDER, pid)
+            os.makedirs(person_dir, exist_ok=True)
+
+            saved_photos = []
+            for photo in photos:
+                ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
+                safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+                photo.save(os.path.join(person_dir, safe_name))
+                saved_photos.append(safe_name)
+
+            person_data = {"id": pid, "name": name, "reference_photos": saved_photos}
+            with open(os.path.join(person_dir, "person.json"), "w", encoding="utf-8") as f:
+                json.dump(person_data, f, indent=2)
+
+            return redirect(url_for("walkthrough", step=3, person_id=pid, person_name=name))
+
+        return render_template("walkthrough.html", step=2)
+
+    if step == 3:
+        if not person_id:
+            return redirect(url_for("walkthrough", step=1))
+        return render_template("walkthrough.html", step=3, person_id=person_id, person_name=person_name)
+
+    if step == 5:
+        if not person_id:
+            return redirect(url_for("upload_form"))
+        tagged_count = count_tagged_photos(person_name)
+        return render_template(
+            "walkthrough.html",
+            step=5,
+            person_id=person_id,
+            person_name=person_name,
+            tagged_count=tagged_count,
+        )
+
+    return redirect(url_for("walkthrough", step=1))
 
 
 @app.route("/people/new", methods=["GET", "POST"])
@@ -468,6 +529,7 @@ def confirm_person(person_id):
 
     if request.method == "GET":
         job_id = request.args.get("job")
+        walkthrough = request.args.get("walkthrough") == "1"
         if not job_id:
             abort(400)
 
@@ -482,6 +544,7 @@ def confirm_person(person_id):
                 person=person,
                 waiting=True,
                 job_id=job_id,
+                walkthrough=walkthrough,
             )
 
         if job_data["status"] == "failed":
@@ -514,16 +577,19 @@ def confirm_person(person_id):
                 "reason": file_to_answer.get(fname, "No match"),
             })
 
+        walkthrough = request.args.get("walkthrough") == "1"
         return render_template(
             "confirm_grid.html",
             person=person,
             waiting=False,
             matches=matches,
             no_match=no_match,
+            walkthrough=walkthrough,
         )
 
     confirmed_filenames = request.form.getlist("confirmed")
     person_name = person.get("name", "")
+    walkthrough = request.form.get("walkthrough") == "1"
 
     for fname in confirmed_filenames:
         image_path = Path(UPLOAD_FOLDER) / fname
@@ -533,6 +599,9 @@ def confirm_person(person_id):
             if person_name not in people_list:
                 people_list.append(person_name)
             sidecar.merge(image_path, {"people": people_list})
+
+    if walkthrough:
+        return redirect(url_for("walkthrough", step=5, person_id=person_id, person_name=person_name))
 
     return redirect(url_for("person_detail", person_id=person_id))
 

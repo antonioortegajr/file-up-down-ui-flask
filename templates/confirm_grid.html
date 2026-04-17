@@ -311,7 +311,7 @@
       <a href="#" class="is-active">Confirm</a>
     </nav>
     {% include 'lms_banner.html' %}
-    <a class="back" href="{{ url_for('person_detail', person_id=person.id) }}">&larr; {{ person.name | e }}</a>
+    <a class="back" href="{% if walkthrough %}{{ url_for('walkthrough', step=3, person_id=person.id, person_name=person.name) }}{% else %}{{ url_for('person_detail', person_id=person.id) }}{% endif %}">&larr; {% if walkthrough %}Back to search{% else %}{{ person.name | e }}{% endif %}</a>
 
     {% if waiting %}
     <div class="waiting" id="waiting">
@@ -363,6 +363,9 @@
     </div>
 
     <form method="POST" action="{{ url_for('confirm_person', person_id=person.id) }}">
+      {% if walkthrough %}
+      <input type="hidden" name="walkthrough" value="1">
+      {% endif %}
       <div class="section">
         <div class="section-header">
           <h3 class="section-title">Potential Matches</h3>
