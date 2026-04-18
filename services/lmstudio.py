@@ -100,6 +100,15 @@ def model_is_loaded(base_url: str = LMSTUDIO_BASE, model: str = LMSTUDIO_MODEL) 
         return False
 
 
+def get_available_models(base_url: str = LMSTUDIO_BASE) -> list[str]:
+    try:
+        with urllib.request.urlopen(base_url.rstrip("/") + "/models", timeout=5) as r:
+            data = json.loads(r.read())
+        return [m.get("id") for m in data.get("data", []) if m.get("id")]
+    except Exception:
+        return []
+
+
 def _run_lms(*args: str) -> bool:
     try:
         result = subprocess.run([LMS, *args])

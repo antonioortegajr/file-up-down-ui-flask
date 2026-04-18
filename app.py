@@ -1019,16 +1019,36 @@ def lmstudio_status():
     model_state = "unloaded"
     if server == "up" and model:
         model_state = "loaded" if lmstudio.model_is_loaded(base, model) else "unloaded"
-    return jsonify({"server": server, "model": model_state})
+    available_models = []
+    if server == "up":
+        available_models = lmstudio.get_available_models(base)
+    return jsonify({
+        "server": server,
+        "model": model_state,
+        "model_configured": model,
+        "available_models": available_models,
+    })
+
+
+@app.route("/api/lmstudio/models")
+def lmstudio_models():
+    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    if not lmstudio.server_is_up(base):
+        return jsonify({"models": []})
+    models = lmstudio.get_available_models(base)
+    return jsonify({"models": models})
 
 
 @app.route("/api/lmstudio/start", methods=["POST"])
 def lmstudio_start():
     base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
     model = os.environ.get("LMSTUDIO_MODEL", "")
+    data = request.get_json() or {}
+    if data.get("model"):
+        model = data["model"]
     t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
     t.start()
-    return jsonify({"status": "starting"})
+    return jsonify({"status": "starting", "model": model})
 
 
 def _start_lmstudio_background():
