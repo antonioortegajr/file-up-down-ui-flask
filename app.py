@@ -1026,18 +1026,16 @@ def lmstudio_status():
 def lmstudio_start():
     base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
     model = os.environ.get("LMSTUDIO_MODEL", "")
-    if model:
-        t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
-        t.start()
+    t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
+    t.start()
     return jsonify({"status": "starting"})
 
 
 def _start_lmstudio_background():
     base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
     model = os.environ.get("LMSTUDIO_MODEL", "")
-    if model:
-        t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
-        t.start()
+    t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
+    t.start()
 
 
 if __name__ == "__main__":
