@@ -297,7 +297,7 @@ def upload_file():
             images_needing_desc.append(str(fpath))
 
     if images_needing_desc:
-        base_url = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+        base_url = lmstudio.LMSTUDIO_BASE
         model = os.environ.get("LMSTUDIO_MODEL", "")
         api_key = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
         if model:
@@ -994,7 +994,7 @@ def find_person_in_library(person_id):
     if not os.path.isfile(person_file):
         abort(404)
 
-    base_url = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    base_url = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     api_key = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
 
@@ -1013,7 +1013,7 @@ def find_person_in_library(person_id):
 
 @app.route("/api/lmstudio/status")
 def lmstudio_status():
-    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     server = "up" if lmstudio.server_is_up(base) else "down"
     model_state = "unloaded"
@@ -1032,7 +1032,7 @@ def lmstudio_status():
 
 @app.route("/api/lmstudio/models")
 def lmstudio_models():
-    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    base = lmstudio.LMSTUDIO_BASE
     if not lmstudio.server_is_up(base):
         return jsonify({"models": []})
     models = lmstudio.get_available_models(base)
@@ -1041,7 +1041,7 @@ def lmstudio_models():
 
 @app.route("/api/lmstudio/start", methods=["POST"])
 def lmstudio_start():
-    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     data = request.get_json() or {}
     if data.get("model"):
@@ -1052,7 +1052,7 @@ def lmstudio_start():
 
 
 def _start_lmstudio_background():
-    base = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+    base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
     t.start()
