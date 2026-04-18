@@ -230,7 +230,9 @@
           <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this person?')">Delete</button>
         </form>
         <button class="btn btn-secondary" id="find-btn" onclick="findInLibrary()">Find in library</button>
+        <button class="btn btn-secondary" id="confirm-btn" onclick="startInteractiveConfirm()">Confirm photos (interactive)</button>
       </div>
+      <div id="lms-warning" class="banner" style="display:none;margin-top:0.5rem;padding:0.5rem 0.75rem;font-size:0.85rem;color:var(--text-muted);background:rgba(139,154,173,0.12);border:1px solid rgba(139,154,173,0.35);border-radius:calc(var(--radius)-4px);">LM Studio not connected — AI hints will be unavailable, but you can still confirm manually.</div>
     </header>
 
     <div class="section">
@@ -268,6 +270,10 @@
     </div>
   </div>
   <script>
+    var lmsConnected = {{ 'true' if lms_connected else 'false' }};
+    if (!lmsConnected && document.getElementById('lms-warning')) {
+      document.getElementById('lms-warning').style.display = 'block';
+    }
     function findInLibrary() {
       var btn = document.getElementById('find-btn');
       btn.disabled = true;
@@ -286,6 +292,27 @@
         .catch(function(err) {
           btn.disabled = false;
           btn.textContent = 'Find in library';
+          alert('Error: ' + err);
+        });
+    }
+    function startInteractiveConfirm() {
+      var btn = document.getElementById('confirm-btn');
+      btn.disabled = true;
+      btn.textContent = 'Starting…';
+      fetch('{{ url_for("create_confirm_session", person_id=person.id) }}', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.session_id) {
+            window.location.href = '/people/{{ person.id }}/interactive-confirm?session=' + data.session_id;
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Confirm photos (interactive)';
+            alert('Failed to start session: ' + JSON.stringify(data));
+          }
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Confirm photos (interactive)';
           alert('Error: ' + err);
         });
     }
