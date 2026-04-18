@@ -127,7 +127,7 @@ def ensure_ready(base_url: str = LMSTUDIO_BASE, model: str = LMSTUDIO_MODEL) -> 
                 break
         else:
             raise RuntimeError(f"LM Studio server did not respond at {base_url} after 15 s.")
-    if not model_is_loaded(base_url, model):
+    if model and not model_is_loaded(base_url, model):
         if not _run_lms("load", model):
             raise RuntimeError(f"Could not load model '{model}'.")
 
