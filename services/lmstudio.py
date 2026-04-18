@@ -99,6 +99,14 @@ def server_is_up(base_url: str = LMSTUDIO_BASE) -> bool:
 def model_is_loaded(base_url: str = LMSTUDIO_BASE, model: str = LMSTUDIO_MODEL) -> bool:
     if not model:
         return False
+    if LMSTUDIO_BACKEND == "ollama":
+        ollama_base = base_url.rsplit("/v1", 1)[0]
+        try:
+            with urllib.request.urlopen(ollama_base + "/api/tags", timeout=5) as r:
+                data = json.loads(r.read())
+            return any(m.get("name") == model for m in data.get("models", []))
+        except Exception:
+            return False
     try:
         with urllib.request.urlopen(base_url.rstrip("/") + "/models", timeout=5) as r:
             data = json.loads(r.read())
@@ -108,6 +116,14 @@ def model_is_loaded(base_url: str = LMSTUDIO_BASE, model: str = LMSTUDIO_MODEL) 
 
 
 def get_available_models(base_url: str = LMSTUDIO_BASE) -> list[str]:
+    if LMSTUDIO_BACKEND == "ollama":
+        ollama_base = base_url.rsplit("/v1", 1)[0]
+        try:
+            with urllib.request.urlopen(ollama_base + "/api/tags", timeout=5) as r:
+                data = json.loads(r.read())
+            return [m.get("name") for m in data.get("models", []) if m.get("name")]
+        except Exception:
+            return []
     try:
         with urllib.request.urlopen(base_url.rstrip("/") + "/models", timeout=5) as r:
             data = json.loads(r.read())
