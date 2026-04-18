@@ -6,9 +6,16 @@ import time
 import urllib.error
 import urllib.request
 
-LMS = "lms"
 
-LMSTUDIO_BASE = os.environ.get("LMSTUDIO_BASE", "http://127.0.0.1:1234/v1")
+
+LMSTUDIO_BACKEND = os.environ.get("LMSTUDIO_BACKEND", "lmstudio")
+
+DEFAULT_PORTS = {
+    "lmstudio": "1234",
+    "ollama": "11434",
+}
+DEFAULT_PORT = DEFAULT_PORTS.get(LMSTUDIO_BACKEND, "1234")
+LMSTUDIO_BASE = os.environ.get("LMSTUDIO_BASE", f"http://127.0.0.1:{DEFAULT_PORT}/v1")
 LMSTUDIO_API_KEY = os.environ.get("LMSTUDIO_API_KEY", "lm-studio")
 LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "")
 
@@ -109,26 +116,38 @@ def get_available_models(base_url: str = LMSTUDIO_BASE) -> list[str]:
         return []
 
 
-def _run_lms(*args: str) -> bool:
+def _run_cmd(*args: str) -> bool:
     try:
-        result = subprocess.run([LMS, *args])
+        result = subprocess.run(args)
         return result.returncode == 0
     except FileNotFoundError:
         return False
 
 
+def _start_server() -> bool:
+    if LMSTUDIO_BACKEND == "ollama":
+        return _run_cmd("ollama", "serve")
+    return _run_cmd("lms", "server", "start")
+
+
+def _load_model(model: str) -> bool:
+    if LMSTUDIO_BACKEND == "ollama":
+        return _run_cmd("ollama", "pull", model)
+    return _run_cmd("lms", "load", model)
+
+
 def ensure_ready(base_url: str = LMSTUDIO_BASE, model: str = LMSTUDIO_MODEL) -> None:
     if not server_is_up(base_url):
-        if not _run_lms("server", "start"):
-            raise RuntimeError("Could not start LM Studio server.")
+        if not _start_server():
+            raise RuntimeError(f"Could not start {LMSTUDIO_BACKEND} server.")
         for _ in range(15):
             time.sleep(1)
             if server_is_up(base_url):
                 break
         else:
-            raise RuntimeError(f"LM Studio server did not respond at {base_url} after 15 s.")
+            raise RuntimeError(f"{LMSTUDIO_BACKEND.capitalize()} server did not respond at {base_url} after 15 s.")
     if model and not model_is_loaded(base_url, model):
-        if not _run_lms("load", model):
+        if not _load_model(model):
             raise RuntimeError(f"Could not load model '{model}'.")
 
 
