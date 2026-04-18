@@ -126,7 +126,15 @@ def _run_cmd(*args: str) -> bool:
 
 def _start_server() -> bool:
     if LMSTUDIO_BACKEND == "ollama":
-        return _run_cmd("ollama", "serve")
+        try:
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except FileNotFoundError:
+            return False
     return _run_cmd("lms", "server", "start")
 
 
