@@ -1072,6 +1072,39 @@ def lmstudio_stop():
     return jsonify({"error": "Failed to stop server"}), 500
 
 
+@app.route("/api/lmstudio/set-model", methods=["POST"])
+def lmstudio_set_model():
+    data = request.get_json() or {}
+    model = data.get("model", "")
+    if model:
+        os.environ["LMSTUDIO_MODEL"] = model
+    return jsonify({"status": "ok", "model": model})
+
+
+@app.route("/options")
+def options_page():
+    base = lmstudio.LMSTUDIO_BASE
+    backend = lmstudio.LMSTUDIO_BACKEND
+    configured_model = os.environ.get("LMSTUDIO_MODEL", "")
+    server_status = "online" if lmstudio.server_is_up(base) else "offline"
+    model_state = "unloaded"
+    if server_status == "online" and configured_model:
+        model_state = "loaded" if lmstudio.model_is_loaded(base, configured_model) else "unloaded"
+    available_models = []
+    if server_status == "online":
+        available_models = lmstudio.get_available_models(base)
+    return render_template(
+        "options.html",
+        backend=backend,
+        base_url=base,
+        server_status=server_status,
+        model_state=model_state,
+        configured_model=configured_model,
+        available_models=available_models,
+        lms_start_error=_lms_start_error,
+    )
+
+
 def _start_lmstudio_background():
     global _lms_start_error
     base = lmstudio.LMSTUDIO_BASE
