@@ -78,6 +78,8 @@
 
   dismissBtn.addEventListener('click', function() {
     dismissed = true;
+    fetch('/api/lmstudio/stop', {method: 'POST'})
+      .catch(function() {});
     banner.classList.remove('visible');
   });
 

@@ -10,6 +10,8 @@ import urllib.request
 
 LMSTUDIO_BACKEND = os.environ.get("LMSTUDIO_BACKEND", "lmstudio")
 
+_ollama_process = None
+
 DEFAULT_PORTS = {
     "lmstudio": "1234",
     "ollama": "11434",
@@ -141,9 +143,10 @@ def _run_cmd(*args: str) -> bool:
 
 
 def _start_server() -> bool:
+    global _ollama_process
     if LMSTUDIO_BACKEND == "ollama":
         try:
-            subprocess.Popen(
+            _ollama_process = subprocess.Popen(
                 ["ollama", "serve"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -152,6 +155,25 @@ def _start_server() -> bool:
         except FileNotFoundError:
             return False
     return _run_cmd("lms", "server", "start")
+
+
+def stop_server() -> bool:
+    global _ollama_process
+    if LMSTUDIO_BACKEND == "ollama":
+        if _ollama_process is not None:
+            try:
+                _ollama_process.terminate()
+                _ollama_process.wait(timeout=5)
+                _ollama_process = None
+                return True
+            except Exception:
+                try:
+                    _ollama_process.kill()
+                    _ollama_process = None
+                except Exception:
+                    pass
+        return False
+    return _run_cmd("lms", "server", "stop")
 
 
 def _load_model(model: str) -> bool:
