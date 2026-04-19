@@ -84,6 +84,7 @@
   startBtn.addEventListener('click', function() {
     var selectedModel = modelSelect.value;
     startBtn.disabled = true;
+    label.textContent = 'LM Studio starting...';
     fetch('/api/lmstudio/start', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -98,6 +99,7 @@
       })
       .catch(function() {
         startBtn.disabled = false;
+        setStatus('offline');
       });
   });
 
@@ -147,6 +149,12 @@
       .then(function(d) {
         configuredModel = d.model_configured || null;
         populateModels(d.available_models || []);
+        if (d.error) {
+          console.error('LM Studio start error:', d.error);
+          setStatus('offline');
+          label.textContent = 'LM Studio error: ' + d.error;
+          return;
+        }
         if (d.server === 'up' && d.model === 'loaded') {
           setStatus('ready');
         } else if (d.server === 'up') {
