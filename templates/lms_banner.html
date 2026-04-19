@@ -13,8 +13,9 @@
   #lms-banner.visible { display: flex; }
   .lms-banner--ready { color: #c8e6c9; background: rgba(76, 175, 80, 0.15); border: 1px solid rgba(76, 175, 80, 0.45); }
   .lms-banner--starting { color: #fff9c4; background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.45); }
+  .lms-banner--online { color: #bbdefb; background: rgba(33, 150, 243, 0.15); border: 1px solid rgba(33, 150, 243, 0.45); }
   .lms-banner--offline { color: #ffcdd2; background: rgba(229, 57, 53, 0.15); border: 1px solid rgba(229, 57, 53, 0.45); }
-  .lms-banner--ready a, .lms-banner--starting a, .lms-banner--offline a {
+  .lms-banner--ready a, .lms-banner--starting a, .lms-banner--online a, .lms-banner--offline a {
     color: inherit;
     text-decoration: underline;
   }
@@ -28,6 +29,7 @@
   }
   .lms-banner--ready #lms-dot { background: #4caf50; }
   .lms-banner--starting #lms-dot { background: #ffc107; }
+  .lms-banner--online #lms-dot { background: #2196f3; }
   #lms-label { flex: 1; }
 </style>
 <a id="lms-banner" href="/options" role="status" aria-live="polite">
@@ -41,13 +43,16 @@
   var label = document.getElementById('lms-label');
 
   function setStatus(state, model) {
-    banner.classList.remove('visible', 'lms-banner--ready', 'lms-banner--starting', 'lms-banner--offline');
+    banner.classList.remove('visible', 'lms-banner--ready', 'lms-banner--starting', 'lms-banner--online', 'lms-banner--offline');
     if (state === 'ready') {
       banner.classList.add('visible', 'lms-banner--ready');
       label.textContent = model ? ('LM Studio ready: ' + model) : 'LM Studio ready';
     } else if (state === 'starting') {
       banner.classList.add('visible', 'lms-banner--starting');
       label.textContent = 'LM Studio starting...';
+    } else if (state === 'online') {
+      banner.classList.add('visible', 'lms-banner--online');
+      label.textContent = 'LM Studio online — click to load a model';
     } else {
       banner.classList.add('visible', 'lms-banner--offline');
       label.textContent = 'LM Studio offline — click to configure';
@@ -65,7 +70,7 @@
         if (d.server === 'up' && d.model === 'loaded') {
           setStatus('ready', d.model_configured);
         } else if (d.server === 'up') {
-          setStatus('starting', d.model_configured);
+          setStatus('online', d.model_configured);
         } else {
           setStatus('offline', null);
         }
