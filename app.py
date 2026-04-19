@@ -35,6 +35,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 _started_monotonic = time.monotonic()
+_lms_start_error = None
 
 
 def allowed_file(filename: str) -> bool:
@@ -1013,6 +1014,7 @@ def find_person_in_library(person_id):
 
 @app.route("/api/lmstudio/status")
 def lmstudio_status():
+    global _lms_start_error
     base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     server = "up" if lmstudio.server_is_up(base) else "down"
@@ -1022,12 +1024,15 @@ def lmstudio_status():
     available_models = []
     if server == "up":
         available_models = lmstudio.get_available_models(base)
-    return jsonify({
+    response = {
         "server": server,
         "model": model_state,
         "model_configured": model,
         "available_models": available_models,
-    })
+    }
+    if _lms_start_error:
+        response["error"] = _lms_start_error
+    return jsonify(response)
 
 
 @app.route("/api/lmstudio/models")
@@ -1041,20 +1046,36 @@ def lmstudio_models():
 
 @app.route("/api/lmstudio/start", methods=["POST"])
 def lmstudio_start():
+    global _lms_start_error
     base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
     data = request.get_json() or {}
     if data.get("model"):
         model = data["model"]
-    t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
+    _lms_start_error = None
+    def wrapped_ensure_ready():
+        global _lms_start_error
+        try:
+            lmstudio.ensure_ready(base, model)
+        except Exception as e:
+            _lms_start_error = str(e)
+    t = threading.Thread(target=wrapped_ensure_ready, daemon=True)
     t.start()
     return jsonify({"status": "starting", "model": model})
 
 
 def _start_lmstudio_background():
+    global _lms_start_error
     base = lmstudio.LMSTUDIO_BASE
     model = os.environ.get("LMSTUDIO_MODEL", "")
-    t = threading.Thread(target=lambda: lmstudio.ensure_ready(base, model), daemon=True)
+    _lms_start_error = None
+    def wrapped_ensure_ready():
+        global _lms_start_error
+        try:
+            lmstudio.ensure_ready(base, model)
+        except Exception as e:
+            _lms_start_error = str(e)
+    t = threading.Thread(target=wrapped_ensure_ready, daemon=True)
     t.start()
 
 
