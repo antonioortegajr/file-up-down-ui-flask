@@ -1105,21 +1105,5 @@ def options_page():
     )
 
 
-def _start_lmstudio_background():
-    global _lms_start_error
-    base = lmstudio.LMSTUDIO_BASE
-    model = os.environ.get("LMSTUDIO_MODEL", "")
-    _lms_start_error = None
-    def wrapped_ensure_ready():
-        global _lms_start_error
-        try:
-            lmstudio.ensure_ready(base, model)
-        except Exception as e:
-            _lms_start_error = str(e)
-    t = threading.Thread(target=wrapped_ensure_ready, daemon=True)
-    t.start()
-
-
 if __name__ == "__main__":
-    _start_lmstudio_background()
     app.run(host="0.0.0.0", port=8080)
