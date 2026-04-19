@@ -368,20 +368,42 @@ def walkthrough():
         return render_template("walkthrough.html", step=1)
 
     if step == 2:
+        library_files = list_upload_folder()
+        image_exts = IMAGE_EXTENSIONS
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             if not name:
-                return render_template("walkthrough.html", step=2, error="Name is required.")
-            photos = [f for f in request.files.getlist("photos") if f and f.filename]
-            if not photos:
-                return render_template("walkthrough.html", step=2, error="At least one reference photo is required.")
+                return render_template("walkthrough.html", step=2, error="Name is required.", library_photos=library_files, image_exts=image_exts)
+
+            uploaded_photos = [f for f in request.files.getlist("photos") if f and f.filename]
+            library_photo_selections = request.form.get("library_photos", "").strip()
+
+            selected_library = []
+            if library_photo_selections:
+                valid_lib = set(library_files)
+                for fn in library_photo_selections.split(","):
+                    fn = fn.strip()
+                    if fn and fn in valid_lib:
+                        selected_library.append(fn)
+
+            if not uploaded_photos and not selected_library:
+                return render_template("walkthrough.html", step=2, error="At least one reference photo is required.", library_photos=library_files, image_exts=image_exts)
 
             pid = str(uuid.uuid4())
             person_dir = os.path.join(PEOPLE_FOLDER, pid)
             os.makedirs(person_dir, exist_ok=True)
 
             saved_photos = []
-            for photo in photos:
+
+            for fn in selected_library:
+                src = os.path.join(UPLOAD_FOLDER, fn)
+                ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else "jpg"
+                dest_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+                dest = os.path.join(person_dir, dest_name)
+                shutil.copy(src, dest)
+                saved_photos.append(dest_name)
+
+            for photo in uploaded_photos:
                 ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
                 safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
                 photo.save(os.path.join(person_dir, safe_name))
@@ -393,7 +415,7 @@ def walkthrough():
 
             return redirect(url_for("walkthrough", step=3, person_id=pid, person_name=name))
 
-        return render_template("walkthrough.html", step=2)
+        return render_template("walkthrough.html", step=2, library_photos=library_files, image_exts=image_exts)
 
     if step == 3:
         if not person_id:
@@ -417,23 +439,45 @@ def walkthrough():
 
 @app.route("/people/new", methods=["GET", "POST"])
 def new_person():
+    library_files = list_upload_folder()
+    image_exts = IMAGE_EXTENSIONS
+
     if request.method == "GET":
-        return render_template("person_form.html", person=None, error=None)
+        return render_template("person_form.html", person=None, error=None, library_photos=library_files, image_exts=image_exts)
 
     name = request.form.get("name", "").strip()
     if not name:
-        return render_template("person_form.html", person=None, error="Name is required."), 400
+        return render_template("person_form.html", person=None, error="Name is required.", library_photos=library_files, image_exts=image_exts), 400
 
-    photos = [f for f in request.files.getlist("photos") if f and f.filename]
-    if not photos:
-        return render_template("person_form.html", person=None, error="At least one reference photo is required."), 400
+    uploaded_photos = [f for f in request.files.getlist("photos") if f and f.filename]
+    library_photo_selections = request.form.get("library_photos", "").strip()
+
+    selected_library = []
+    if library_photo_selections:
+        valid_lib = set(library_files)
+        for fn in library_photo_selections.split(","):
+            fn = fn.strip()
+            if fn and fn in valid_lib:
+                selected_library.append(fn)
+
+    if not uploaded_photos and not selected_library:
+        return render_template("person_form.html", person=None, error="At least one reference photo is required.", library_photos=library_files, image_exts=image_exts), 400
 
     person_id = str(uuid.uuid4())
     person_dir = os.path.join(PEOPLE_FOLDER, person_id)
     os.makedirs(person_dir, exist_ok=True)
 
     saved_photos = []
-    for photo in photos:
+
+    for fn in selected_library:
+        src = os.path.join(UPLOAD_FOLDER, fn)
+        ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else "jpg"
+        dest_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+        dest = os.path.join(person_dir, dest_name)
+        shutil.copy(src, dest)
+        saved_photos.append(dest_name)
+
+    for photo in uploaded_photos:
         ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
         safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
         photo.save(os.path.join(person_dir, safe_name))
@@ -458,16 +502,38 @@ def edit_person(person_id):
         person = json.load(f)
     person["id"] = person_id
 
+    library_files = list_upload_folder()
+    image_exts = IMAGE_EXTENSIONS
+
     if request.method == "GET":
-        return render_template("person_form.html", person=person, error=None)
+        return render_template("person_form.html", person=person, error=None, library_photos=library_files, image_exts=image_exts)
 
     name = request.form.get("name", "").strip()
     if not name:
-        return render_template("person_form.html", person=person, error="Name is required."), 400
+        return render_template("person_form.html", person=person, error="Name is required.", library_photos=library_files, image_exts=image_exts), 400
 
-    photos = [f for f in request.files.getlist("photos") if f and f.filename]
+    uploaded_photos = [f for f in request.files.getlist("photos") if f and f.filename]
+    library_photo_selections = request.form.get("library_photos", "").strip()
+
+    selected_library = []
+    if library_photo_selections:
+        valid_lib = set(library_files)
+        for fn in library_photo_selections.split(","):
+            fn = fn.strip()
+            if fn and fn in valid_lib:
+                selected_library.append(fn)
+
     new_photos = []
-    for photo in photos:
+
+    for fn in selected_library:
+        src = os.path.join(UPLOAD_FOLDER, fn)
+        ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else "jpg"
+        dest_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
+        dest = os.path.join(person_dir, dest_name)
+        shutil.copy(src, dest)
+        new_photos.append(dest_name)
+
+    for photo in uploaded_photos:
         ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else "jpg"
         safe_name = secure_filename(f"{uuid.uuid4().hex}.{ext}")
         photo.save(os.path.join(person_dir, safe_name))

@@ -188,6 +188,62 @@
       color: var(--danger);
       margin-bottom: 1rem;
     }
+    .library-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      max-height: 12rem;
+      overflow-y: auto;
+      padding: 0.25rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .library-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg-input);
+      border: 2px solid var(--border);
+      cursor: pointer;
+    }
+    .library-thumb.selected {
+      border-color: var(--accent);
+    }
+    .library-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .library-thumb .check {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .library-thumb.selected .check {
+      display: flex;
+    }
+    .library-thumb .check svg {
+      width: 12px;
+      height: 12px;
+      color: var(--bg);
+    }
+    .library-empty {
+      grid-column: 1 / -1;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -227,6 +283,29 @@
         <input type="file" id="photos" name="photos" multiple accept=".jpg,.jpeg,.png,.gif">
         <p class="photo-hint">{{ "Select additional photos to add." if person else "At least one photo required. Hold Ctrl/Cmd to select multiple." }}</p>
       </div>
+      {% if library_photos %}
+      <div class="form-group">
+        <label>Or select from library</label>
+        <input type="hidden" id="library_photos" name="library_photos" value="">
+        <div class="library-grid" id="library_grid">
+          {% for fn in library_photos %}
+          {% set parts = fn.rsplit('.', 1) %}
+          {% set ext = parts[1].lower() if parts|length == 2 else '' %}
+          {% if ext in image_exts %}
+          <div class="library-thumb" data-filename="{{ fn | e }}" title="{{ fn | e }}">
+            <img src="{{ url_for('uploaded_file', filename=fn) }}" alt="" loading="lazy">
+            <div class="check">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <p class="photo-hint">Click to select. Selected photos are copied into this person's folder.</p>
+      </div>
+      {% endif %}
       <div class="actions">
         <a class="btn btn-secondary" href="{{ url_for('people_page') }}">Cancel</a>
         <button class="btn" type="submit">{{ "Save Changes" if person else "Create Person" }}</button>
@@ -238,5 +317,33 @@
     </form>
     {% endif %}
   </div>
+  <script>
+    (function() {
+      var grid = document.getElementById('library_grid');
+      if (!grid) return;
+      var input = document.getElementById('library_photos');
+      var thumbs = grid.querySelectorAll('.library-thumb');
+      var selected = [];
+
+      function updateInput() {
+        input.value = selected.join(',');
+      }
+
+      thumbs.forEach(function(thumb) {
+        thumb.addEventListener('click', function() {
+          var fn = thumb.dataset.filename;
+          var idx = selected.indexOf(fn);
+          if (idx > -1) {
+            selected.splice(idx, 1);
+            thumb.classList.remove('selected');
+          } else {
+            selected.push(fn);
+            thumb.classList.add('selected');
+          }
+          updateInput();
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
