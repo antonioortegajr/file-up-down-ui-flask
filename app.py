@@ -1064,6 +1064,14 @@ def lmstudio_start():
     return jsonify({"status": "starting", "model": model})
 
 
+@app.route("/api/lmstudio/stop", methods=["POST"])
+def lmstudio_stop():
+    success = lmstudio.stop_server()
+    if success:
+        return jsonify({"status": "stopped"})
+    return jsonify({"error": "Failed to stop server"}), 500
+
+
 def _start_lmstudio_background():
     global _lms_start_error
     base = lmstudio.LMSTUDIO_BASE
