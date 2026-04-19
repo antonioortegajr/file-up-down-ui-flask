@@ -80,8 +80,8 @@ def list_upload_folder():
 
 
 def load_lmstudio_sidecar(upload_path: Path):
-    """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or None."""
-    return sidecar.read(upload_path)
+    """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or empty dict."""
+    return sidecar.read(upload_path) or {}
 
 
 def _resolved_upload_target(filename: str):
