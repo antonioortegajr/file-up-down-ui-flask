@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>Options</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap {
+      width: 100%;
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    nav a:hover:not(.is-active) { color: var(--text); }
+    header { margin-bottom: 1.5rem; }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 0.65rem;
+    }
+    .card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot--online { background: #4caf50; }
+    .status-dot--offline { background: #f44336; }
+    .status-dot--starting { background: #ffc107; }
+    .status-label { flex: 1; }
+    .status-detail {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .error-msg {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: calc(var(--radius) - 4px);
+      font-size: 0.85rem;
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.15);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+    }
+    .form-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    select {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      min-height: var(--tap-min);
+    }
+    select:disabled { opacity: 0.6; }
+    button {
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      min-height: var(--tap-min);
+    }
+    button:hover { background: var(--accent-hover); }
+    button:active { transform: scale(0.98); }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-elevated); }
+    .btn-danger {
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.18);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+    }
+    .btn-danger:hover {
+      background: rgba(229, 57, 53, 0.32);
+    }
+    .controls-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .empty {
+      margin: 0;
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .info-row {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="{{ url_for('search_page') }}">Search</a>
+      <a href="{{ url_for('options_page') }}" class="is-active">Options</a>
+    </nav>
+    <header>
+      <h1>AI Backend Options</h1>
+      <p class="lede">Configure LM Studio or Ollama backend</p>
+    </header>
+
+    <section class="card" aria-labelledby="backend-heading">
+      <h2 id="backend-heading">Backend Status</h2>
+      <div class="status-row">
+        <span class="status-dot status-dot--{% if server_status == 'online' %}online{% elif server_status == 'starting' %}starting{% else %}offline{% endif %}"></span>
+        <span class="status-label">Server: {{ server_status|title }}</span>
+      </div>
+      <div class="status-detail">
+        <p class="info-row">Backend: {{ backend }}</p>
+        <p class="info-row">URL: {{ base_url }}</p>
+      </div>
+      {% if lms_start_error %}
+      <div class="error-msg">{{ lms_start_error }}</div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="model-heading">
+      <h2 id="model-heading">Model Management</h2>
+      <div class="form-row">
+        <select id="model-select">
+          <option value="">-- Select Model --</option>
+          {% for model in available_models %}
+          <option value="{{ model }}" {% if model == configured_model %}selected{% endif %}>{{ model }}</option>
+          {% endfor %}
+        </select>
+        <button id="set-model-btn" type="button">Set Model</button>
+      </div>
+      <div class="status-detail">
+        <p>Current: {% if configured_model %}{{ configured_model }}{% else %}None{% endif %}</p>
+        <p>State: {{ model_state }}</p>
+      </div>
+      <div class="controls-row" style="margin-top: 0.75rem;">
+        <button id="restart-model-btn" type="button" class="btn-secondary">Restart Model</button>
+      </div>
+      {% if not available_models %}
+      <p class="empty" style="margin-top: 0.75rem;">No models available. Start the server and load a model.</p>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="server-heading">
+      <h2 id="server-heading">Server Controls</h2>
+      <div class="controls-row">
+        <button id="start-server-btn" type="button">Start Server</button>
+        <button id="stop-server-btn" type="button" class="btn-danger">Stop Server</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function() {
+      var modelSelect = document.getElementById('model-select');
+      var setModelBtn = document.getElementById('set-model-btn');
+      var restartModelBtn = document.getElementById('restart-model-btn');
+      var startServerBtn = document.getElementById('start-server-btn');
+      var stopServerBtn = document.getElementById('stop-server-btn');
+      var configuredModel = {{ configured_model|tojson }};
+
+      setModelBtn.addEventListener('click', function() {
+        var model = modelSelect.value;
+        if (!model) return;
+        setModelBtn.disabled = true;
+        fetch('/api/lmstudio/set-model', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({model: model})
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            configuredModel = model;
+            location.reload();
+          })
+          .catch(function() {
+            setModelBtn.disabled = false;
+          });
+      });
+
+      restartModelBtn.addEventListener('click', function() {
+        restartModelBtn.disabled = true;
+        restartModelBtn.textContent = 'Stopping...';
+        fetch('/api/lmstudio/stop', {method: 'POST'})
+          .then(function() {
+            restartModelBtn.textContent = 'Starting...';
+            return fetch('/api/lmstudio/start', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({model: configuredModel})
+            });
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            setTimeout(function() { location.reload(); }, 2000);
+          })
+          .catch(function() {
+            restartModelBtn.disabled = false;
+            restartModelBtn.textContent = 'Restart Model';
+          });
+      });
+
+      startServerBtn.addEventListener('click', function() {
+        startServerBtn.disabled = true;
+        startServerBtn.textContent = 'Starting...';
+        fetch('/api/lmstudio/start', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({model: modelSelect.value || configuredModel})
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            setTimeout(function() { location.reload(); }, 2000);
+          })
+          .catch(function() {
+            startServerBtn.disabled = false;
+            startServerBtn.textContent = 'Start Server';
+          });
+      });
+
+      stopServerBtn.addEventListener('click', function() {
+        stopServerBtn.disabled = true;
+        stopServerBtn.textContent = 'Stopping...';
+        fetch('/api/lmstudio/stop', {method: 'POST'})
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            setTimeout(function() { location.reload(); }, 1000);
+          })
+          .catch(function() {
+            stopServerBtn.disabled = false;
+            stopServerBtn.textContent = 'Stop Server';
+          });
+      });
+
+      setInterval(function() {
+        fetch('/api/lmstudio/status')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.available_models && d.available_models.length > 0) {
+              var current = modelSelect.value;
+              modelSelect.innerHTML = '<option value="">-- Select Model --</option>';
+              d.available_models.forEach(function(m) {
+                var opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (d.model_configured && m === d.model_configured) {
+                  opt.selected = true;
+                }
+                modelSelect.appendChild(opt);
+              });
+              if (current) modelSelect.value = current;
+            }
+          })
+          .catch(function() {});
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>

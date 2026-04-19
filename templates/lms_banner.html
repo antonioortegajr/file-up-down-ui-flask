@@ -1,18 +1,23 @@
 <style>
   #lms-banner {
     margin: 0 0 1rem;
-    padding: 0.6rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: calc(var(--radius) - 4px);
+    font-size: 0.8rem;
     line-height: 1.4;
     display: none;
     align-items: center;
     gap: 0.5rem;
+    text-decoration: none;
   }
   #lms-banner.visible { display: flex; }
   .lms-banner--ready { color: #c8e6c9; background: rgba(76, 175, 80, 0.15); border: 1px solid rgba(76, 175, 80, 0.45); }
   .lms-banner--starting { color: #fff9c4; background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.45); }
   .lms-banner--offline { color: #ffcdd2; background: rgba(229, 57, 53, 0.15); border: 1px solid rgba(229, 57, 53, 0.45); }
+  .lms-banner--ready a, .lms-banner--starting a, .lms-banner--offline a {
+    color: inherit;
+    text-decoration: underline;
+  }
   #lms-dot {
     display: inline-block;
     width: 8px;
@@ -24,125 +29,28 @@
   .lms-banner--ready #lms-dot { background: #4caf50; }
   .lms-banner--starting #lms-dot { background: #ffc107; }
   #lms-label { flex: 1; }
-  #lms-model-select {
-    font-size: 0.8rem;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    border: 1px solid #888;
-    background: #fff;
-    color: #333;
-  }
-  #lms-model-select:disabled { opacity: 0.6; }
-  #lms-dismiss {
-    background: none;
-    border: none;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-    padding: 0 0.25rem;
-    opacity: 0.7;
-  }
-  #lms-dismiss:hover { opacity: 1; }
-  #lms-start {
-    padding: 0.25rem 0.6rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    font-family: inherit;
-    color: #0f1419;
-    background: #ffc107;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  #lms-start:hover { background: #ffca28; }
-  #lms-start:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
-<div id="lms-banner" role="status" aria-live="polite">
+<a id="lms-banner" href="/options" role="status" aria-live="polite">
   <span id="lms-dot"></span>
   <span id="lms-label">LM Studio offline</span>
-  <select id="lms-model-select" style="display: none;"></select>
-  <button id="lms-start" type="button">Start</button>
-  <button id="lms-dismiss" type="button" aria-label="Dismiss">&times;</button>
-</div>
+</a>
 <script>
 (function() {
   var banner = document.getElementById('lms-banner');
   var dot = document.getElementById('lms-dot');
   var label = document.getElementById('lms-label');
-  var modelSelect = document.getElementById('lms-model-select');
-  var startBtn = document.getElementById('lms-start');
-  var dismissBtn = document.getElementById('lms-dismiss');
-  var dismissed = false;
-  var currentModel = null;
-  var configuredModel = null;
 
-  dismissBtn.addEventListener('click', function() {
-    fetch('/api/lmstudio/stop', {method: 'POST'})
-      .then(function() {})
-      .catch(function() {});
-    dismissed = true;
-    banner.classList.remove('visible');
-  });
-
-  startBtn.addEventListener('click', function() {
-    var selectedModel = modelSelect.value;
-    startBtn.disabled = true;
-    label.textContent = 'LM Studio starting...';
-    fetch('/api/lmstudio/start', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({model: selectedModel || configuredModel})
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.status === 'starting') {
-          currentModel = d.model || selectedModel || configuredModel;
-          setStatus('starting');
-        }
-      })
-      .catch(function() {
-        startBtn.disabled = false;
-        setStatus('offline');
-      });
-  });
-
-  function setStatus(state) {
+  function setStatus(state, model) {
     banner.classList.remove('visible', 'lms-banner--ready', 'lms-banner--starting', 'lms-banner--offline');
     if (state === 'ready') {
       banner.classList.add('visible', 'lms-banner--ready');
-      label.textContent = 'LM Studio ready';
-      startBtn.style.display = 'none';
+      label.textContent = model ? ('LM Studio ready: ' + model) : 'LM Studio ready';
     } else if (state === 'starting') {
       banner.classList.add('visible', 'lms-banner--starting');
       label.textContent = 'LM Studio starting...';
-      startBtn.style.display = 'none';
     } else {
       banner.classList.add('visible', 'lms-banner--offline');
-      label.textContent = 'LM Studio offline';
-      startBtn.style.display = 'inline-block';
-      startBtn.disabled = false;
-    }
-  }
-
-  function populateModels(models) {
-    modelSelect.innerHTML = '';
-    if (!models || models.length === 0) {
-      modelSelect.style.display = 'none';
-      return;
-    }
-    modelSelect.style.display = 'inline-block';
-    var defaultOpt = document.createElement('option');
-    defaultOpt.value = '';
-    defaultOpt.textContent = 'Select model...';
-    modelSelect.appendChild(defaultOpt);
-    for (var i = 0; i < models.length; i++) {
-      var opt = document.createElement('option');
-      opt.value = models[i];
-      opt.textContent = models[i];
-      if (configuredModel && models[i] === configuredModel) {
-        opt.selected = true;
-      }
-      modelSelect.appendChild(opt);
+      label.textContent = 'LM Studio offline — click to configure';
     }
   }
 
@@ -150,24 +58,20 @@
     fetch('/api/lmstudio/status')
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        configuredModel = d.model_configured || null;
-        populateModels(d.available_models || []);
         if (d.error) {
-          console.error('LM Studio start error:', d.error);
-          setStatus('offline');
-          label.textContent = 'LM Studio error: ' + d.error;
+          setStatus('offline', null);
           return;
         }
         if (d.server === 'up' && d.model === 'loaded') {
-          setStatus('ready');
+          setStatus('ready', d.model_configured);
         } else if (d.server === 'up') {
-          setStatus('starting');
+          setStatus('starting', d.model_configured);
         } else {
-          setStatus('offline');
+          setStatus('offline', null);
         }
       })
       .catch(function() {
-        setStatus('offline');
+        setStatus('offline', null);
       });
   }
 
