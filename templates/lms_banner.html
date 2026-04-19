@@ -77,6 +77,9 @@
   var configuredModel = null;
 
   dismissBtn.addEventListener('click', function() {
+    fetch('/api/lmstudio/stop', {method: 'POST'})
+      .then(function() {})
+      .catch(function() {});
     dismissed = true;
     banner.classList.remove('visible');
   });
