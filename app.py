@@ -80,6 +80,34 @@ def list_upload_folder():
     )
 
 
+def list_favorited_files():
+    """Return list of files where sidecar metadata has favorited: true."""
+    if not os.path.isdir(UPLOAD_FOLDER):
+        return []
+    favorited = []
+    for f in os.listdir(UPLOAD_FOLDER):
+        if f.startswith("."):
+            continue
+        if f.endswith(".meta.json") or f == "_set_unique.meta.json":
+            continue
+        path = Path(UPLOAD_FOLDER) / f
+        if not path.is_file():
+            continue
+        meta = sidecar.read(path)
+        if meta and meta.get("favorited"):
+            favorited.append(f)
+    return sorted(favorited)
+
+
+def is_favorited(filename: str) -> bool:
+    """Check if a file is favorited via its sidecar metadata."""
+    path = Path(UPLOAD_FOLDER) / filename
+    if not path.is_file():
+        return False
+    meta = sidecar.read(path)
+    return bool(meta and meta.get("favorited"))
+
+
 def load_lmstudio_sidecar(upload_path: Path):
     """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or empty dict."""
     return sidecar.read(upload_path) or {}
@@ -234,15 +262,23 @@ def _normalize_view_mode(raw) -> str:
 
 
 def _render_upload_page(
-    upload_message=None, upload_status="ok", view_mode="thumb", describe_job_id=None
+    upload_message=None,
+    upload_status="ok",
+    view_mode="thumb",
+    describe_job_id=None,
+    filter_mode="all",
 ):
+    files = list_favorited_files() if filter_mode == "favorites" else list_upload_folder()
+    favorited_set = {f for f in list_upload_folder() if is_favorited(f)}
     return render_template(
         "library.html",
-        files=list_upload_folder(),
+        files=files,
         upload_message=upload_message,
         upload_status=upload_status,
         view_mode=view_mode,
         describe_job_id=describe_job_id,
+        filter_mode=filter_mode,
+        favorited_set=favorited_set,
     )
 
 
@@ -251,7 +287,10 @@ def upload_form():
     if not list_people():
         return redirect(url_for("walkthrough", step=1))
     vm = _normalize_view_mode(request.args.get("view"))
-    return _render_upload_page(view_mode=vm)
+    filter_mode = request.args.get("filter", "all")
+    if filter_mode not in ("all", "favorites"):
+        filter_mode = "all"
+    return _render_upload_page(view_mode=vm, filter_mode=filter_mode)
 
 
 @app.route("/upload", methods=["POST"])
@@ -342,10 +381,26 @@ def delete_uploaded_file():
     return _render_upload_page(f"Deleted `{target.name}`.", "ok", vm), 200
 
 
+@app.route("/api/photos/<path:filename>/favorite", methods=["POST"])
+def toggle_favorite(filename: str):
+    """Toggle favorite status for a photo. Returns current favorited state."""
+    target = _resolved_upload_target(filename)
+    if target is None:
+        return jsonify({"error": "File not found"}), 404
+
+    current = sidecar.read(target) or {}
+    favorited = not current.get("favorited", False)
+    sidecar.merge(target, {"favorited": favorited})
+    return jsonify({"favorited": favorited})
+
+
 @app.route("/files")
 def list_files():
     vm = _normalize_view_mode(request.args.get("view"))
-    return _render_upload_page(view_mode=vm)
+    filter_mode = request.args.get("filter", "all")
+    if filter_mode not in ("all", "favorites"):
+        filter_mode = "all"
+    return _render_upload_page(view_mode=vm, filter_mode=filter_mode)
 
 
 @app.route("/people")
@@ -975,6 +1030,7 @@ def file_detail(filename):
     vm = _normalize_view_mode(request.args.get("view"))
     bundle = build_metadata_rows(target)
     lm_raw = load_lmstudio_sidecar(target)
+    favorited = is_favorited(filename)
     return render_template(
         "detail.html",
         filename=filename,
@@ -986,6 +1042,7 @@ def file_detail(filename):
         is_image=bundle["is_image"],
         meta_note=bundle["note"],
         lmstudio_meta=lm_raw,
+        favorited=favorited,
     )
 
 
