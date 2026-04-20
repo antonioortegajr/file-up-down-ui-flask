@@ -162,6 +162,62 @@ def get_photo_date(path: Path) -> datetime.datetime | None:
         return None
 
 
+def get_gps_coords(path: Path) -> tuple[float, float] | None:
+    """Extract GPS coordinates from EXIF GPSInfo, convert DMS to decimal degrees. Returns (lat, lng) or None."""
+    ext = path.suffix.lower().lstrip(".")
+    if ext not in IMAGE_EXTENSIONS:
+        return None
+
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+
+    try:
+        with Image.open(path) as im:
+            exif = im.getexif()
+            if exif is None:
+                return None
+            from PIL.ExifTags import IFD
+            try:
+                gps_ifd = exif.get_ifd(IFD.GPSInfo)
+            except Exception:
+                return None
+            if not gps_ifd:
+                return None
+
+            lat_ref = gps_ifd.get(1)
+            lat = gps_ifd.get(2)
+            lng_ref = gps_ifd.get(3)
+            lng = gps_ifd.get(4)
+
+            if lat is None or lng is None or lat_ref is None or lng_ref is None:
+                return None
+
+            def convert_dms_to_degrees(value):
+                if not isinstance(value, tuple) or len(value) < 3:
+                    return None
+                degrees = float(value[0])
+                minutes = float(value[1])
+                seconds = float(value[2])
+                return degrees + minutes / 60 + seconds / 3600
+
+            lat_dec = convert_dms_to_degrees(lat)
+            lng_dec = convert_dms_to_degrees(lng)
+
+            if lat_dec is None or lng_dec is None:
+                return None
+
+            if lat_ref in ("S", "s"):
+                lat_dec = -lat_dec
+            if lng_ref in ("W", "w"):
+                lng_dec = -lng_dec
+
+            return (lat_dec, lng_dec)
+    except Exception:
+        return None
+
+
 def load_lmstudio_sidecar(upload_path: Path):
     """Read `imagename.meta.json` written by analyze_uploads_people_lmstudio.py, or empty dict."""
     return sidecar.read(upload_path) or {}
@@ -631,6 +687,31 @@ def list_files():
     if filter_mode not in ("all", "favorites"):
         filter_mode = "all"
     return _render_upload_page(view_mode=vm, filter_mode=filter_mode)
+
+
+@app.route("/api/photos/geo")
+def geo_photos():
+    """Return JSON list of geotagged photos with lat, lng, filename, thumb_url."""
+    files = list_upload_folder()
+    result = []
+    for filename in files:
+        path = Path(UPLOAD_FOLDER) / filename
+        coords = get_gps_coords(path)
+        if coords:
+            lat, lng = coords
+            result.append({
+                "filename": filename,
+                "lat": lat,
+                "lng": lng,
+                "thumb_url": url_for("uploaded_file", filename=filename),
+            })
+    return jsonify(result)
+
+
+@app.route("/map")
+def map_page():
+    """Render the map view page."""
+    return render_template("map.html")
 
 
 @app.route("/people")

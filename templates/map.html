@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --bg-elevated: #1a2332;
+      --bg-input: #243044;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --text-muted: #8b9aad;
+      --accent: #5b9fd4;
+      --accent-hover: #7eb6e8;
+      --radius: 12px;
+      --tap-min: 44px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      padding:
+        max(1rem, env(safe-area-inset-top))
+        max(1rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 28rem; margin: 0 auto; }
+    nav {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    nav a {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    nav a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    nav a + a { border-left: 1px solid var(--border); }
+    header { margin-bottom: 1rem; }
+    h1 {
+      font-size: clamp(1.35rem, 4vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    #map {
+      height: 60vh;
+      min-height: 400px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+    }
+    .empty {
+      margin: 0;
+      padding: 2rem 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .leaflet-popup-content {
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: var(--text);
+    }
+    .leaflet-popup-tip {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+    }
+    .leaflet-container a {
+      color: var(--accent);
+    }
+    .marker-popup {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .marker-popup img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: calc(var(--radius) - 6px);
+      display: block;
+    }
+    .marker-popup a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .marker-popup a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+    .marker-cluster {
+      background: rgba(91, 159, 212, 0.4);
+      border-radius: 50%;
+    }
+    .marker-cluster div {
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{{ url_for('upload_form') }}">Library</a>
+      <a href="{{ url_for('albums_page') }}">Albums</a>
+      <a href="{{ url_for('people_page') }}">People</a>
+      <a href="{{ url_for('map_page') }}" class="is-active">Map</a>
+      <a href="{{ url_for('search_page') }}">Search</a>
+      <a href="{{ url_for('options_page') }}">Options</a>
+    </nav>
+    <header>
+      <h1>Map</h1>
+      <p class="lede">Photos with GPS coordinates</p>
+    </header>
+    <div id="map"></div>
+    <div id="empty-state" class="empty" style="display:none;">No geotagged photos found. Only photos with GPS data in EXIF will appear on the map.</div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script>
+    (function() {
+      var map = L.map('map', {
+        center: [20, 0],
+        zoom: 2,
+        zoomControl: true
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        maxZoom: 19
+      }).addTo(map);
+
+      var markers = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true
+      });
+
+      fetch('/api/photos/geo')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data || data.length === 0) {
+            document.getElementById('empty-state').style.display = 'block';
+            document.getElementById('map').style.display = 'none';
+            return;
+          }
+          var bounds = [];
+          data.forEach(function(photo) {
+            var lat = photo.lat;
+            var lng = photo.lng;
+            bounds.push([lat, lng]);
+            var thumbUrl = photo.thumb_url + '?w=200&h=200';
+            var fileUrl = '/file/' + encodeURIComponent(photo.filename);
+            var marker = L.marker([lat, lng]);
+            var popupContent = '<div class="marker-popup">' +
+              '<img src="' + thumbUrl + '" alt="">' +
+              '<a href="' + fileUrl + '">' + photo.filename + '</a>' +
+            '</div>';
+            marker.bindPopup(popupContent);
+            markers.addLayer(marker);
+          });
+          map.addLayer(markers);
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, {padding: [50, 50], maxZoom: 12});
+          }
+        })
+        .catch(function() {
+          document.getElementById('empty-state').style.display = 'block';
+          document.getElementById('map').style.display = 'none';
+        });
+    })();
+  </script>
+</body>
+</html>
