@@ -4,6 +4,7 @@ import os
 import shutil
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from flask import (
@@ -250,6 +251,56 @@ def build_metadata_rows(path: Path):
     }
 
 
+def get_photo_date(path: Path):
+    """Extract EXIF DateTimeOriginal, falling back to file mtime."""
+    ext = path.suffix.lower().lstrip(".")
+    if ext not in IMAGE_EXTENSIONS:
+        return None
+
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+
+    try:
+        with Image.open(path) as im:
+            exif = im.getexif()
+            if exif is not None:
+                from PIL.ExifTags import TAGS
+                for tag_id, val in exif.items():
+                    if TAGS.get(tag_id) == "DateTimeOriginal":
+                        s = _exif_value_to_str(val)
+                        if s:
+                            from datetime import datetime
+                            try:
+                                return datetime.strptime(s, "%Y:%m:%d %H:%M:%S")
+                            except ValueError:
+                                pass
+    except Exception:
+        pass
+
+    return None
+
+
+def list_files_by_date(files: list[str]) -> list[tuple[str, datetime | None]]:
+    """Return list of (filename, date) sorted by date descending."""
+    from datetime import datetime
+    base = Path(app.config["UPLOAD_FOLDER"])
+    result = []
+    for fname in files:
+        fpath = base / fname
+        photo_date = get_photo_date(fpath)
+        if photo_date is None:
+            try:
+                mtime = fpath.stat().st_mtime
+                photo_date = datetime.fromtimestamp(mtime)
+            except OSError:
+                photo_date = None
+        result.append((fname, photo_date))
+    result.sort(key=lambda p: (p[1] is None, p[1] if p[1] else datetime.min), reverse=True)
+    return result
+
+
 def _normalize_view_mode(raw) -> str:
     if not raw:
         return "thumb"
@@ -258,6 +309,8 @@ def _normalize_view_mode(raw) -> str:
         return "thumb"
     if v == "list":
         return "list"
+    if v == "timeline":
+        return "timeline"
     return "thumb"
 
 
@@ -270,6 +323,19 @@ def _render_upload_page(
 ):
     files = list_favorited_files() if filter_mode == "favorites" else list_upload_folder()
     favorited_set = {f for f in list_upload_folder() if is_favorited(f)}
+    timeline_groups = None
+    if view_mode == "timeline" and files:
+        from collections import defaultdict
+        dated_files = list_files_by_date(files)
+        groups = defaultdict(list)
+        for fname, dt in dated_files:
+            if dt is None:
+                key = "Unknown date"
+            else:
+                key = (dt.year, dt.month, f"{dt:%B %Y}")
+            groups[key].append((fname, dt))
+        sorted_keys = sorted(groups.keys(), key=lambda k: (k == "Unknown date", k), reverse=True)
+        timeline_groups = [(k[-1] if isinstance(k, tuple) else k, groups[k]) for k in sorted_keys]
     return render_template(
         "library.html",
         files=files,
@@ -279,6 +345,7 @@ def _render_upload_page(
         describe_job_id=describe_job_id,
         filter_mode=filter_mode,
         favorited_set=favorited_set,
+        timeline_groups=timeline_groups,
     )
 
 
