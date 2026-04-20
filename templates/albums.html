@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f1419">
-  <title>People</title>
+  <title>Albums</title>
   <style>
     :root {
       color-scheme: dark;
@@ -92,7 +92,45 @@
     }
     .btn:hover { background: var(--accent-hover); }
     .btn:active { transform: scale(0.98); }
-    ul.people-grid {
+    .card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .album-form { margin: 0; display: flex; gap: 0.5rem; }
+    @media (min-width: 380px) {
+      .album-form { flex-direction: row; }
+    }
+    .album-form input[type="text"] {
+      flex: 1;
+      min-height: var(--tap-min);
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .album-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .album-form input[type="submit"] {
+      min-height: var(--tap-min);
+      padding: 0 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .album-form input[type="submit"]:hover { background: var(--accent-hover); }
+    ul.albums-grid {
       list-style: none;
       margin: 0;
       padding: 0;
@@ -101,9 +139,9 @@
       gap: 0.75rem;
     }
     @media (min-width: 400px) {
-      ul.people-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      ul.albums-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-    .person-card {
+    .album-card {
       border: 1px solid var(--border);
       border-radius: calc(var(--radius) - 4px);
       overflow: hidden;
@@ -113,20 +151,20 @@
       min-width: 0;
       text-decoration: none;
     }
-    .person-card:hover { border-color: var(--accent); }
-    .person-preview {
+    .album-card:hover { border-color: var(--accent); }
+    .album-preview {
       display: block;
       aspect-ratio: 1;
       background: #0a0e14;
       position: relative;
     }
-    .person-preview img {
+    .album-preview img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .person-placeholder {
+    .album-placeholder {
       width: 100%;
       height: 100%;
       display: flex;
@@ -137,14 +175,14 @@
       color: var(--text-muted);
       letter-spacing: 0.06em;
     }
-    .person-meta {
+    .album-meta {
       padding: 0.45rem 0.5rem 0.5rem;
       display: flex;
       flex-direction: column;
       gap: 0.2rem;
       flex: 1;
     }
-    .person-name {
+    .album-name {
       font-size: 0.75rem;
       color: var(--text);
       font-weight: 600;
@@ -155,7 +193,7 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .person-count {
+    .album-count {
       font-size: 0.7rem;
       color: var(--text-muted);
     }
@@ -175,34 +213,37 @@
   <div class="wrap">
     <nav>
       <a href="{{ url_for('upload_form') }}">Library</a>
-      <a href="{{ url_for('albums_page') }}">Albums</a>
-      <a href="{{ url_for('people_page') }}" class="is-active">People</a>
+      <a href="{{ url_for('albums_page') }}" class="is-active">Albums</a>
+      <a href="{{ url_for('people_page') }}">People</a>
       <a href="{{ url_for('search_page') }}">Search</a>
       <a href="{{ url_for('options_page') }}">Options</a>
     </nav>
-    {% include 'lms_banner.html' %}
     <header>
-      <h1>People</h1>
-      <p class="lede">Known people in your photo library</p>
+      <h1>Albums</h1>
+      <p class="lede">Group your photos into named collections</p>
     </header>
-    {% if people %}
-    <div style="margin-bottom:1rem;">
-      <a class="btn" href="{{ url_for('new_person') }}" style="font-size:0.9rem;min-height:40px;padding:0 1rem;">+ Add person</a>
-    </div>
-    <ul class="people-grid">
-      {% for person in people %}
+    <section class="card">
+      <h2 style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin:0 0 0.75rem;">Create album</h2>
+      <form class="album-form" method="post" action="{{ url_for('new_album') }}">
+        <input type="text" name="name" placeholder="Album name" required>
+        <input type="submit" value="Create">
+      </form>
+    </section>
+    {% if albums %}
+    <ul class="albums-grid">
+      {% for album in albums %}
       <li>
-        <a class="person-card" href="{{ url_for('person_detail', person_id=person.id) }}">
-          <div class="person-preview">
-            {% if person.reference_photos %}
-            <img src="{{ url_for('person_ref_photo', person_id=person.id, filename=person.reference_photos[0]) }}" alt="" loading="lazy" width="200" height="200">
+        <a class="album-card" href="{{ url_for('album_detail', album_id=album.id) }}">
+          <div class="album-preview">
+            {% if album.photos and album.photos[0] %}
+            <img src="{{ url_for('uploaded_file', filename=album.photos[0]) }}" alt="" loading="lazy" width="200" height="200">
             {% else %}
-            <div class="person-placeholder">NO PHOTO</div>
+            <div class="album-placeholder">EMPTY</div>
             {% endif %}
           </div>
-          <div class="person-meta">
-            <span class="person-name">{{ person.name | e }}</span>
-            <span class="person-count">{{ person.tagged_count }} photo{% if person.tagged_count != 1 %}s{% endif %}</span>
+          <div class="album-meta">
+            <span class="album-name">{{ album.name | e }}</span>
+            <span class="album-count">{{ album.photos | length }} photo{% if album.photos | length != 1 %}s{% endif %}</span>
           </div>
         </a>
       </li>
@@ -210,8 +251,7 @@
     </ul>
     {% else %}
     <div class="empty">
-      <p>No people added yet.</p>
-      <a class="btn" href="{{ url_for('new_person') }}">Add first person</a>
+      <p>No albums yet — create one above.</p>
     </div>
     {% endif %}
   </div>

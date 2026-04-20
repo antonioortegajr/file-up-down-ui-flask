@@ -155,6 +155,12 @@
     }
     .btn-star.is-favorited { color: #ffc107; }
     .btn-star:hover { color: #ffcd4d; border-color: #ffcd4d; }
+    .btn-add-album {
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .btn-add-album:hover { border-color: var(--accent); }
     nav {
       display: flex;
       gap: 0;
@@ -205,6 +211,7 @@
   <div class="wrap">
     <nav>
       <a href="{{ url_for('upload_form') }}" class="is-active">Library</a>
+      <a href="{{ url_for('albums_page') }}">Albums</a>
       <a href="{{ url_for('people_page') }}">People</a>
       <a href="{{ url_for('search_page') }}">Search</a>
     </nav>
@@ -315,6 +322,7 @@
 
     <div class="actions">
       <button type="button" class="btn btn-star {% if favorited %}is-favorited{% endif %}" id="btn-star" data-filename="{{ filename|e }}">{{ '★' if favorited else '☆' }}</button>
+      <button type="button" class="btn btn-add-album" id="btn-add-album">Add to album</button>
       <a class="btn btn-download" href="{{ download_url }}" download>Download</a>
       <form method="post" action="/delete" style="flex:1;min-width:8rem;margin:0;display:flex;"
             onsubmit="return confirm('Delete this file permanently?');">
@@ -322,6 +330,20 @@
         <input type="hidden" name="view" value="{{ view_mode }}">
         <button type="submit" class="btn btn-delete" style="width:100%">Delete</button>
       </form>
+    </div>
+    <div class="album-modal" id="album-modal" role="dialog" aria-labelledby="album-modal-title" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;z-index:1000;">
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;width:90%;max-width:20rem;">
+        <h3 id="album-modal-title" style="margin:0 0 1rem;font-size:1.1rem;">Add to album</h3>
+        <select id="album-select" style="width:100%;padding:0.6rem 0.75rem;font-size:1rem;font-family:inherit;color:var(--text);background:var(--bg-input);border:1px solid var(--border);border-radius:calc(var(--radius)-4px);margin-bottom:1rem;">
+          {% for album in albums %}
+          <option value="{{ album.id }}">{{ album.name | e }}</option>
+          {% endfor %}
+        </select>
+        <div style="display:flex;gap:0.5rem;">
+          <button type="button" class="btn btn-cancel" id="album-cancel" style="flex:1;padding:0.6rem 0.85rem;font-size:0.9rem;font-weight:600;font-family:inherit;color:var(--text-muted);background:var(--bg-input);border:1px solid var(--border);border-radius:calc(var(--radius)-4px);cursor:pointer;">Cancel</button>
+          <button type="button" class="btn btn-confirm" id="album-confirm" style="flex:1;padding:0.6rem 0.85rem;font-size:0.9rem;font-weight:600;font-family:inherit;color:var(--bg);background:var(--accent);border:none;border-radius:calc(var(--radius)-4px);cursor:pointer;">Add</button>
+        </div>
+      </div>
     </div>
   </div>
   <script>
@@ -339,6 +361,46 @@
         })
         .catch(function() { btn.disabled = false; });
     });
+    (function() {
+      var btnAddAlbum = document.getElementById('btn-add-album');
+      var albumModal = document.getElementById('album-modal');
+      var albumCancel = document.getElementById('album-cancel');
+      var albumConfirm = document.getElementById('album-confirm');
+      var albumSelect = document.getElementById('album-select');
+      if (!btnAddAlbum) return;
+      var albums = {{ albums|tojson }};
+      if (albums.length === 0) {
+        btnAddAlbum.addEventListener('click', function() {
+          alert('No albums yet. Create an album first.');
+        });
+        return;
+      }
+      btnAddAlbum.addEventListener('click', function() {
+        albumModal.style.display = 'flex';
+      });
+      albumCancel.addEventListener('click', function() {
+        albumModal.style.display = 'none';
+      });
+      albumConfirm.addEventListener('click', function() {
+        var albumId = albumSelect.value;
+        var filename = {{ filename|tojson }};
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/albums/' + albumId + '/add';
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'filenames';
+        input.value = filename;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+      });
+      albumModal.addEventListener('click', function(e) {
+        if (e.target === albumModal) {
+          albumModal.style.display = 'none';
+        }
+      });
+    })();
   </script>
 </body>
 </html>

@@ -25,6 +25,7 @@ from services import confirmations, jobs, sidecar, lmstudio
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 PEOPLE_FOLDER = os.path.join(os.getcwd(), "people")
+ALBUMS_FOLDER = os.path.join(os.getcwd(), "albums")
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "gif"}
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
@@ -34,6 +35,9 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+if not os.path.exists(ALBUMS_FOLDER):
+    os.makedirs(ALBUMS_FOLDER)
 
 _started_monotonic = time.monotonic()
 _lms_start_error = None
@@ -1248,6 +1252,105 @@ def search_page():
     return render_template("search.html", query=query, mode=mode, results=results, people=list_people())
 
 
+def list_albums():
+    if not os.path.isdir(ALBUMS_FOLDER):
+        return []
+    albums = []
+    for album_id in os.listdir(ALBUMS_FOLDER):
+        album_file = os.path.join(ALBUMS_FOLDER, album_id, "album.json")
+        if not os.path.isfile(album_file):
+            continue
+        try:
+            with open(album_file, "r", encoding="utf-8") as f:
+                album = json.load(f)
+            album["id"] = album_id
+            albums.append(album)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+    return sorted(albums, key=lambda a: a.get("name", "").lower())
+
+
+def _get_album_or_404(album_id: str) -> dict:
+    album_file = os.path.join(ALBUMS_FOLDER, album_id, "album.json")
+    if not os.path.isfile(album_file):
+        abort(404)
+    with open(album_file, "r", encoding="utf-8") as f:
+        album = json.load(f)
+    album["id"] = album_id
+    return album
+
+
+@app.route("/albums")
+def albums_page():
+    albums = list_albums()
+    return render_template("albums.html", albums=albums)
+
+
+@app.route("/albums/<album_id>")
+def album_detail(album_id):
+    album = _get_album_or_404(album_id)
+    photos = album.get("photos", [])
+    valid_files = set(list_upload_folder())
+    valid_photos = [p for p in photos if p in valid_files]
+    return render_template("album_detail.html", album=album, photos=valid_photos)
+
+
+@app.route("/albums/new", methods=["POST"])
+def new_album():
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("albums_page"))
+    album_id = str(uuid.uuid4())
+    album_dir = os.path.join(ALBUMS_FOLDER, album_id)
+    os.makedirs(album_dir, exist_ok=True)
+    album_data = {
+        "id": album_id,
+        "name": name,
+        "photos": [],
+        "created_at": datetime.datetime.utcnow().isoformat(),
+    }
+    with open(os.path.join(album_dir, "album.json"), "w", encoding="utf-8") as f:
+        json.dump(album_data, f, indent=2)
+    return redirect(url_for("album_detail", album_id=album_id))
+
+
+@app.route("/albums/<album_id>/add", methods=["POST"])
+def add_to_album(album_id):
+    album = _get_album_or_404(album_id)
+    raw = request.form.get("filenames", "").strip()
+    if not raw:
+        return redirect(url_for("album_detail", album_id=album_id))
+    filenames = [f.strip() for f in raw.split(",") if f.strip()]
+    valid, invalid = _validate_filenames(filenames)
+    existing = set(album.get("photos", []))
+    added = [f for f in valid if f not in existing]
+    album["photos"] = album.get("photos", []) + added
+    album_file = os.path.join(ALBUMS_FOLDER, album_id, "album.json")
+    with open(album_file, "w", encoding="utf-8") as f:
+        json.dump(album, f, indent=2)
+    return redirect(url_for("album_detail", album_id=album_id))
+
+
+@app.route("/albums/<album_id>/remove", methods=["POST"])
+def remove_from_album(album_id):
+    album = _get_album_or_404(album_id)
+    filename = request.form.get("filename", "").strip()
+    if filename and filename in album.get("photos", []):
+        album["photos"] = [p for p in album["photos"] if p != filename]
+        album_file = os.path.join(ALBUMS_FOLDER, album_id, "album.json")
+        with open(album_file, "w", encoding="utf-8") as f:
+            json.dump(album, f, indent=2)
+    return redirect(url_for("album_detail", album_id=album_id))
+
+
+@app.route("/albums/<album_id>/delete", methods=["POST"])
+def delete_album(album_id):
+    _get_album_or_404(album_id)
+    album_dir = os.path.join(ALBUMS_FOLDER, album_id)
+    shutil.rmtree(album_dir)
+    return redirect(url_for("albums_page"))
+
+
 @app.route("/file/<path:filename>")
 def file_detail(filename):
     target = _resolved_upload_target(filename)
@@ -1257,6 +1360,7 @@ def file_detail(filename):
     bundle = build_metadata_rows(target)
     lm_raw = load_lmstudio_sidecar(target)
     favorited = is_favorited(filename)
+    albums = list_albums()
     return render_template(
         "detail.html",
         filename=filename,
@@ -1269,6 +1373,7 @@ def file_detail(filename):
         meta_note=bundle["note"],
         lmstudio_meta=lm_raw,
         favorited=favorited,
+        albums=albums,
     )
 
 
