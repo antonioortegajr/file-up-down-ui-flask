@@ -1,3 +1,4 @@
+import datetime
 import threading
 import json
 import os
@@ -80,6 +81,23 @@ def list_upload_folder():
     )
 
 
+def list_files_by_date(filter_mode: str = "all") -> list[tuple[str, datetime.datetime | None]]:
+    """Return list of (filename, date) sorted by date descending. None for unknown date."""
+    files = list_upload_folder()
+    if filter_mode == "favorites":
+        favorited_set = set(list_favorited_files())
+        files = [f for f in files if f in favorited_set]
+
+    result = []
+    for filename in files:
+        path = Path(UPLOAD_FOLDER) / filename
+        dt = get_photo_date(path)
+        result.append((filename, dt))
+
+    result.sort(key=lambda x: x[1] if x[1] else datetime.datetime.min, reverse=True)
+    return result
+
+
 def list_favorited_files():
     """Return list of files where sidecar metadata has favorited: true."""
     if not os.path.isdir(UPLOAD_FOLDER):
@@ -106,6 +124,38 @@ def is_favorited(filename: str) -> bool:
         return False
     meta = sidecar.read(path)
     return bool(meta and meta.get("favorited"))
+
+
+def get_photo_date(path: Path) -> datetime.datetime | None:
+    """Extract DateTimeOriginal from EXIF, or fall back to file mtime."""
+    ext = path.suffix.lower().lstrip(".")
+    if ext not in IMAGE_EXTENSIONS:
+        return None
+
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+
+    try:
+        with Image.open(path) as im:
+            exif = im.getexif()
+            if exif is not None:
+                from PIL.ExifTags import TAGS
+                for tag_id, val in exif.items():
+                    if TAGS.get(tag_id) == "DateTimeOriginal":
+                        try:
+                            return datetime.datetime.strptime(str(val), "%Y:%m:%d %H:%M:%S")
+                        except (ValueError, TypeError):
+                            pass
+    except Exception:
+        pass
+
+    try:
+        mtime = path.stat().st_mtime
+        return datetime.datetime.fromtimestamp(mtime)
+    except (OSError, ValueError):
+        return None
 
 
 def load_lmstudio_sidecar(upload_path: Path):
@@ -258,6 +308,8 @@ def _normalize_view_mode(raw) -> str:
         return "thumb"
     if v == "list":
         return "list"
+    if v == "timeline":
+        return "timeline"
     return "thumb"
 
 
@@ -270,6 +322,11 @@ def _render_upload_page(
 ):
     files = list_favorited_files() if filter_mode == "favorites" else list_upload_folder()
     favorited_set = {f for f in list_upload_folder() if is_favorited(f)}
+
+    timeline_groups = None
+    if view_mode == "timeline":
+        timeline_groups = _group_files_by_date(filter_mode)
+
     return render_template(
         "library.html",
         files=files,
@@ -279,7 +336,42 @@ def _render_upload_page(
         describe_job_id=describe_job_id,
         filter_mode=filter_mode,
         favorited_set=favorited_set,
+        timeline_groups=timeline_groups,
     )
+
+
+def _group_files_by_date(filter_mode: str) -> list[tuple[str, list[tuple[str, datetime.datetime | None]]]]:
+    """Group files by Year → Month. Returns list of (label, [(filename, date), ...])."""
+    files_with_dates = list_files_by_date(filter_mode)
+
+    groups = {}
+    unknown = []
+    for filename, dt in files_with_dates:
+        if dt is None:
+            unknown.append((filename, dt))
+            continue
+        year = dt.year
+        month = dt.month
+        key = (year, month)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append((filename, dt))
+
+    for key in groups:
+        groups[key].sort(key=lambda x: x[1], reverse=True)
+
+    sorted_keys = sorted(groups.keys(), reverse=True)
+
+    result = []
+    for key in sorted_keys:
+        year, month = key
+        month_name = datetime.date(year, month, 1).strftime("%B %Y")
+        result.append((month_name, groups[key]))
+
+    if unknown:
+        result.append(("Unknown date", unknown))
+
+    return result
 
 
 @app.route("/", methods=["GET"])

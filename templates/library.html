@@ -140,6 +140,12 @@
       color: var(--text-muted);
       margin: 0 0 0.65rem;
     }
+    section > h2 {
+      margin-top: 1.5rem;
+    }
+    section > h2:first-child {
+      margin-top: 0;
+    }
     .file-link {
       display: flex;
       align-items: center;
@@ -423,6 +429,7 @@
         <div class="view-switch" role="group" aria-label="How to show files">
           <a href="{{ url_for('upload_form', view='thumb', filter=filter_mode) }}" class="{% if view_mode == 'thumb' %}is-active{% endif %}">Thumbnails</a>
           <a href="{{ url_for('upload_form', view='list', filter=filter_mode) }}" class="{% if view_mode == 'list' %}is-active{% endif %}">List</a>
+          <a href="{{ url_for('upload_form', view='timeline', filter=filter_mode) }}" class="{% if view_mode == 'timeline' %}is-active{% endif %}">Timeline</a>
         </div>
       </div>
       {% if files %}
@@ -470,6 +477,41 @@
         {% endfor %}
       </ul>
         {% endif %}
+      {% elif view_mode == 'timeline' and timeline_groups %}
+        {% for group_label, group_files in timeline_groups %}
+      <section aria-labelledby="timeline-{{ loop.index }}">
+        <h2 id="timeline-{{ loop.index }}">{{ group_label }}</h2>
+      <ul class="thumb-grid">
+        {% for filename, photo_date in group_files %}
+        {% set parts = filename.rsplit('.', 1) %}
+        {% set ext = parts[1].lower() if parts|length == 2 else '' %}
+        {% set is_img = ext in ['png', 'jpg', 'jpeg', 'gif'] %}
+        <li>
+          <div class="thumb-card">
+            <a class="thumb-preview" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}" title="Details for {{ filename|e }}">
+              {% if is_img %}
+              <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="" loading="lazy" width="200" height="200">
+              {% else %}
+              <span class="thumb-placeholder"><span>{{ ext|upper if ext else 'FILE' }}</span></span>
+              {% endif %}
+              <button type="button" class="thumb-star {% if filename in favorited_set %}is-favorited{% endif %}" aria-label="Toggle favorite" data-filename="{{ filename|e }}">{{ '★' if filename in favorited_set else '☆' }}</button>
+            </a>
+            <div class="thumb-meta">
+              <a class="thumb-name" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}">{{ filename }}</a>
+              <div class="thumb-actions">
+                <form method="post" action="/delete" onsubmit="return confirm('Delete this file?');">
+                  <input type="hidden" name="filename" value="{{ filename|e }}">
+                  <input type="hidden" name="view" value="{{ view_mode }}">
+                  <button type="submit" class="btn-delete" aria-label="Delete {{ filename|e }}">Delete</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      </section>
+        {% endfor %}
       {% else %}
       <p class="empty">No files yet — upload something above.</p>
       {% endif %}
