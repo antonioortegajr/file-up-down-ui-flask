@@ -20,7 +20,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from services import confirmations, jobs, sidecar, lmstudio
+from services import confirmations, duplicates, jobs, sidecar, lmstudio
 
 # --- Configuration ---
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
@@ -1638,6 +1638,38 @@ def options_page():
         available_models=available_models,
         lms_start_error=_lms_start_error,
     )
+
+
+@app.route("/duplicates")
+def duplicates_page():
+    return render_template("duplicates.html")
+
+
+@app.route("/api/scan-duplicates", methods=["POST"])
+def start_scan_duplicates():
+    job_id = jobs.queue_job(
+        duplicates.scan_duplicates,
+        UPLOAD_FOLDER,
+    )
+    return jsonify({"job_id": job_id}), 202
+
+
+@app.route("/api/scan-duplicates/<job_id>")
+def stream_scan_duplicates(job_id):
+    job = jobs.get_job(job_id)
+    if job is None:
+        abort(404)
+
+    def generate():
+        for update in jobs.stream_progress(job_id):
+            data = {"progress": update.get("progress", 0), "message": update.get("message", "")}
+            if update.get("result") is not None:
+                data["result"] = update["result"]
+            if update.get("error"):
+                data["error"] = update["error"]
+            yield f"data: {json.dumps(data)}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream")
 
 
 if __name__ == "__main__":
