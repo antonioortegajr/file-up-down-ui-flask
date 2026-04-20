@@ -233,6 +233,29 @@
       box-shadow: inset 0 -2px 0 0 var(--accent);
     }
     .view-switch a + a { border-left: 1px solid var(--border); }
+    .toolbar-row { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.75rem; }
+    .filter-switch {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      overflow: hidden;
+    }
+    .filter-switch a {
+      text-align: center;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-input);
+    }
+    .filter-switch a.is-active {
+      color: var(--text);
+      background: var(--bg-elevated);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
+    .filter-switch a + a { border-left: 1px solid var(--border); }
     ul.file-list {
       list-style: none;
       margin: 0;
@@ -330,6 +353,31 @@
       margin-top: 0.4rem;
       transition: width 0.2s;
     }
+    .thumb-star {
+      position: absolute;
+      top: 0.35rem;
+      right: 0.35rem;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      line-height: 1;
+      color: var(--text-muted);
+      background: rgba(15, 20, 25, 0.75);
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .thumb-card:hover .thumb-star { opacity: 1; }
+    .thumb-star.is-favorited {
+      opacity: 1;
+      color: #ffc107;
+    }
+    .thumb-star:hover { color: #ffcd4d; }
   </style>
 </head>
 <body>
@@ -367,9 +415,15 @@
     {% endif %}
     <section aria-labelledby="files-heading">
       <h2 id="files-heading">Uploaded files</h2>
-      <div class="view-switch" role="group" aria-label="How to show files">
-        <a href="{{ url_for('upload_form', view='thumb') }}" class="{% if view_mode == 'thumb' %}is-active{% endif %}">Thumbnails</a>
-        <a href="{{ url_for('upload_form', view='list') }}" class="{% if view_mode == 'list' %}is-active{% endif %}">List</a>
+      <div class="toolbar-row">
+        <div class="filter-switch" role="group" aria-label="Filter files">
+          <a href="{{ url_for('upload_form', view=view_mode, filter='all') }}" class="{% if filter_mode == 'all' %}is-active{% endif %}">All</a>
+          <a href="{{ url_for('upload_form', view=view_mode, filter='favorites') }}" class="{% if filter_mode == 'favorites' %}is-active{% endif %}">Favorites</a>
+        </div>
+        <div class="view-switch" role="group" aria-label="How to show files">
+          <a href="{{ url_for('upload_form', view='thumb', filter=filter_mode) }}" class="{% if view_mode == 'thumb' %}is-active{% endif %}">Thumbnails</a>
+          <a href="{{ url_for('upload_form', view='list', filter=filter_mode) }}" class="{% if view_mode == 'list' %}is-active{% endif %}">List</a>
+        </div>
       </div>
       {% if files %}
         {% if view_mode == 'list' %}
@@ -399,6 +453,7 @@
               {% else %}
               <span class="thumb-placeholder"><span>{{ ext|upper if ext else 'FILE' }}</span></span>
               {% endif %}
+              <button type="button" class="thumb-star {% if filename in favorited_set %}is-favorited{% endif %}" aria-label="Toggle favorite" data-filename="{{ filename|e }}">{{ '★' if filename in favorited_set else '☆' }}</button>
             </a>
             <div class="thumb-meta">
               <a class="thumb-name" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}">{{ filename }}</a>
@@ -421,6 +476,25 @@
     </section>
   </div>
   <script>
+    document.addEventListener('click', function(e) {
+      var star = e.target.closest('.thumb-star');
+      if (!star) return;
+      e.preventDefault();
+      var filename = star.getAttribute('data-filename');
+      star.disabled = true;
+      fetch('/api/photos/' + encodeURIComponent(filename) + '/favorite', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            star.disabled = false;
+            return;
+          }
+          star.classList.toggle('is-favorited', data.favorited);
+          star.textContent = data.favorited ? '★' : '☆';
+          star.disabled = false;
+        })
+        .catch(function() { star.disabled = false; });
+    });
     function streamJob(jobId, onProgress, onDone) {
       var es = new EventSource('/api/jobs/' + encodeURIComponent(jobId));
       es.onmessage = function(e) {
