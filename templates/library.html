@@ -420,6 +420,7 @@
       border: 2px solid var(--bg);
     }
     .thumb-card.is-selected .thumb-check { display: flex; }
+    .select-mode .thumb-check { display: flex; }
     .thumb-check.is-checked {
       background: var(--accent);
     }
@@ -765,6 +766,7 @@
       var personSelect = document.getElementById('person-select');
       var selectMode = false;
       var selectedFiles = new Set();
+      var thumbGrid = document.querySelector('.thumb-grid');
       function getFilename(el) {
         var card = el.closest('.thumb-card');
         return card ? card.getAttribute('data-filename') : null;
@@ -808,6 +810,7 @@
         selectMode = !selectMode;
         selectToggle.classList.toggle('is-active', selectMode);
         bulkActions.classList.toggle('visible', selectMode && selectedFiles.size > 0);
+        if (thumbGrid) thumbGrid.classList.toggle('select-mode', selectMode);
         if (!selectMode) {
           selectToggle.textContent = 'Select';
         } else {
@@ -820,6 +823,16 @@
         e.preventDefault();
         var filename = getFilename(check);
         if (filename) toggleSelection(filename);
+      });
+      document.addEventListener('click', function(e) {
+        if (!selectMode) return;
+        var card = e.target.closest('.thumb-card');
+        if (!card) return;
+        var filename = getFilename(card);
+        if (filename) {
+          e.preventDefault();
+          toggleSelection(filename);
+        }
       });
       bulkDelete.addEventListener('click', function() {
         var arr = Array.from(selectedFiles);
