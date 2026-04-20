@@ -327,6 +327,8 @@ def _render_upload_page(
     if view_mode == "timeline":
         timeline_groups = _group_files_by_date(filter_mode)
 
+    people = list_people()
+
     return render_template(
         "library.html",
         files=files,
@@ -337,6 +339,7 @@ def _render_upload_page(
         filter_mode=filter_mode,
         favorited_set=favorited_set,
         timeline_groups=timeline_groups,
+        people=people,
     )
 
 
@@ -471,6 +474,137 @@ def delete_uploaded_file():
     sidecar.delete(target)
 
     return _render_upload_page(f"Deleted `{target.name}`.", "ok", vm), 200
+
+
+MAX_BULK_FILES = 200
+
+
+def _validate_filenames(filenames: list[str]) -> tuple[list[str], list[str]]:
+    """Validate filenames against whitelist. Returns (valid, invalid)."""
+    valid_files = set(list_upload_folder())
+    valid = []
+    invalid = []
+    for fn in filenames:
+        fn = fn.strip()
+        if fn and fn in valid_files:
+            valid.append(fn)
+        elif fn:
+            invalid.append(fn)
+    return valid, invalid
+
+
+@app.route("/bulk/delete", methods=["POST"])
+def bulk_delete():
+    """Delete multiple files at once."""
+    vm = _normalize_view_mode(request.form.get("view"))
+    raw = request.form.get("filenames", "").strip()
+    if not raw:
+        return _render_upload_page("No files selected.", "err", vm), 400
+
+    filenames = [f.strip() for f in raw.split(",") if f.strip()]
+    valid, invalid = _validate_filenames(filenames)
+
+    if invalid:
+        return _render_upload_page(f"Invalid files ignored: {', '.join(invalid[:10])}", "ok", vm), 400
+
+    if not valid:
+        return _render_upload_page("No valid files to delete.", "err", vm), 400
+
+    if len(valid) > MAX_BULK_FILES:
+        return _render_upload_page(f"Too many files (max {MAX_BULK_FILES}).", "err", vm), 400
+
+    deleted = []
+    for fn in valid:
+        target = Path(UPLOAD_FOLDER) / fn
+        try:
+            if target.is_file():
+                target.unlink()
+                sidecar.delete(target)
+                deleted.append(fn)
+        except OSError:
+            pass
+
+    return _render_upload_page(f"Deleted {len(deleted)} file(s).", "ok", vm), 200
+
+
+@app.route("/bulk/tag", methods=["POST"])
+def bulk_tag():
+    """Tag multiple files with a person."""
+    vm = _normalize_view_mode(request.form.get("view"))
+    raw = request.form.get("filenames", "").strip()
+    person_id = request.form.get("person_id", "").strip()
+
+    if not raw:
+        return _render_upload_page("No files selected.", "err", vm), 400
+
+    if not person_id:
+        return _render_upload_page("No person selected.", "err", vm), 400
+
+    person = _get_person_or_404(person_id)
+    person_name = person.get("name", "")
+
+    filenames = [f.strip() for f in raw.split(",") if f.strip()]
+    valid, invalid = _validate_filenames(filenames)
+
+    if invalid:
+        return _render_upload_page(f"Invalid files ignored: {', '.join(invalid[:10])}", "ok", vm), 400
+
+    if not valid:
+        return _render_upload_page("No valid files to tag.", "err", vm), 400
+
+    if len(valid) > MAX_BULK_FILES:
+        return _render_upload_page(f"Too many files (max {MAX_BULK_FILES}).", "err", vm), 400
+
+    tagged = 0
+    for fn in valid:
+        image_path = Path(UPLOAD_FOLDER) / fn
+        if image_path.is_file():
+            current = sidecar.read(image_path) or {}
+            people_list = current.get("people", [])
+            if person_name not in people_list:
+                people_list.append(person_name)
+            sidecar.merge(image_path, {"people": people_list})
+            tagged += 1
+
+    return _render_upload_page(f"Tagged {tagged} photo(s) with {person_name}.", "ok", vm), 200
+
+
+@app.route("/bulk/download", methods=["POST"])
+def bulk_download():
+    """Download multiple files as a zip."""
+    import io
+    import zipfile
+
+    raw = request.form.get("filenames", "").strip()
+    if not raw:
+        abort(400)
+
+    filenames = [f.strip() for f in raw.split(",") if f.strip()]
+    valid, invalid = _validate_filenames(filenames)
+
+    if invalid:
+        abort(400)
+
+    if not valid:
+        abort(400)
+
+    if len(valid) > MAX_BULK_FILES:
+        abort(400)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fn in valid:
+            src = Path(UPLOAD_FOLDER) / fn
+            if src.is_file():
+                data = src.read_bytes()
+                zf.writestr(fn, data)
+
+    buffer.seek(0)
+    return Response(
+        buffer.getvalue(),
+        mimetype="application/zip",
+        headers={"Content-Disposition": "attachment; filename=photos.zip"},
+    )
 
 
 @app.route("/api/photos/<path:filename>/favorite", methods=["POST"])
