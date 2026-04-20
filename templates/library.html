@@ -384,6 +384,155 @@
       color: #ffc107;
     }
     .thumb-star:hover { color: #ffcd4d; }
+    .toolbar-row { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.75rem; }
+    .toolbar-row.gap-between { justify-content: space-between; }
+    .select-toggle {
+      padding: 0.55rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .select-toggle:hover { border-color: var(--accent); }
+    .select-toggle.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    .thumb-check {
+      position: absolute;
+      top: 0.35rem;
+      left: 0.35rem;
+      width: 22px;
+      height: 22px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--bg);
+      background: rgba(91, 159, 212, 0.85);
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid var(--bg);
+    }
+    .thumb-card.is-selected .thumb-check { display: flex; }
+    .select-mode .thumb-check { display: flex; }
+    .thumb-check.is-checked {
+      background: var(--accent);
+    }
+    .thumb-check.is-checked::after {
+      content: "✓";
+    }
+    .bulk-actions {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      margin-bottom: 0.75rem;
+    }
+    .bulk-actions.visible { display: flex; }
+    .bulk-count {
+      flex: 1 1 100%;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .bulk-btn {
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      min-height: 40px;
+    }
+    .bulk-btn--delete {
+      color: #ffcdd2;
+      background: rgba(229, 57, 53, 0.18);
+      border: 1px solid rgba(229, 57, 53, 0.45);
+    }
+    .bulk-btn--delete:hover {
+      background: rgba(229, 57, 53, 0.32);
+    }
+    .bulk-btn--tag {
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .bulk-btn--tag:hover {
+      border-color: var(--accent);
+    }
+    .bulk-btn--download {
+      color: var(--bg);
+      background: var(--accent);
+    }
+    .bulk-btn--download:hover {
+      background: var(--accent-hover);
+    }
+    .tag-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .tag-modal.visible { display: flex; }
+    .tag-modal-content {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      width: 90%;
+      max-width: 20rem;
+    }
+    .tag-modal h3 {
+      margin: 0 0 1rem;
+      font-size: 1.1rem;
+    }
+    .tag-modal select {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      margin-bottom: 1rem;
+    }
+    .tag-modal-btns {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .tag-modal-btns button {
+      flex: 1;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .tag-modal-btns .btn-cancel {
+      color: var(--text-muted);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .tag-modal-btns .btn-confirm {
+      color: var(--bg);
+      background: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -421,7 +570,7 @@
     {% endif %}
     <section aria-labelledby="files-heading">
       <h2 id="files-heading">Uploaded files</h2>
-      <div class="toolbar-row">
+      <div class="toolbar-row gap-between">
         <div class="filter-switch" role="group" aria-label="Filter files">
           <a href="{{ url_for('upload_form', view=view_mode, filter='all') }}" class="{% if filter_mode == 'all' %}is-active{% endif %}">All</a>
           <a href="{{ url_for('upload_form', view=view_mode, filter='favorites') }}" class="{% if filter_mode == 'favorites' %}is-active{% endif %}">Favorites</a>
@@ -431,6 +580,13 @@
           <a href="{{ url_for('upload_form', view='list', filter=filter_mode) }}" class="{% if view_mode == 'list' %}is-active{% endif %}">List</a>
           <a href="{{ url_for('upload_form', view='timeline', filter=filter_mode) }}" class="{% if view_mode == 'timeline' %}is-active{% endif %}">Timeline</a>
         </div>
+        <button type="button" class="select-toggle" id="select-toggle">Select</button>
+      </div>
+      <div class="bulk-actions" id="bulk-actions">
+        <p class="bulk-count" id="bulk-count">0 selected</p>
+        <button type="button" class="bulk-btn bulk-btn--delete" id="bulk-delete">Delete</button>
+        <button type="button" class="bulk-btn bulk-btn--tag" id="bulk-tag">Tag Person</button>
+        <button type="button" class="bulk-btn bulk-btn--download" id="bulk-download">Download zip</button>
       </div>
       {% if files %}
         {% if view_mode == 'list' %}
@@ -453,7 +609,8 @@
         {% set ext = parts[1].lower() if parts|length == 2 else '' %}
         {% set is_img = ext in ['png', 'jpg', 'jpeg', 'gif'] %}
         <li>
-          <div class="thumb-card">
+          <div class="thumb-card" data-filename="{{ filename|e }}">
+            <button type="button" class="thumb-check" aria-label="Select {{ filename|e }}"></button>
             <a class="thumb-preview" href="{{ url_for('file_detail', filename=filename, view=view_mode) }}" title="Details for {{ filename|e }}">
               {% if is_img %}
               <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="" loading="lazy" width="200" height="200">
@@ -516,6 +673,20 @@
       <p class="empty">No files yet — upload something above.</p>
       {% endif %}
     </section>
+    <div class="tag-modal" id="tag-modal" role="dialog" aria-labelledby="tag-modal-title">
+      <div class="tag-modal-content">
+        <h3 id="tag-modal-title">Tag with person</h3>
+        <select id="person-select">
+          {% for person in people %}
+          <option value="{{ person.id }}">{{ person.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="tag-modal-btns">
+          <button type="button" class="btn-cancel" id="tag-cancel">Cancel</button>
+          <button type="button" class="btn-confirm" id="tag-confirm">Tag</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script>
     document.addEventListener('click', function(e) {
@@ -580,6 +751,144 @@
         } else {
           bar.style.display = 'none';
         }
+      });
+    })();
+    (function() {
+      var selectToggle = document.getElementById('select-toggle');
+      var bulkActions = document.getElementById('bulk-actions');
+      var bulkCount = document.getElementById('bulk-count');
+      var bulkDelete = document.getElementById('bulk-delete');
+      var bulkTag = document.getElementById('bulk-tag');
+      var bulkDownload = document.getElementById('bulk-download');
+      var tagModal = document.getElementById('tag-modal');
+      var tagCancel = document.getElementById('tag-cancel');
+      var tagConfirm = document.getElementById('tag-confirm');
+      var personSelect = document.getElementById('person-select');
+      var selectMode = false;
+      var selectedFiles = new Set();
+      var thumbGrid = document.querySelector('.thumb-grid');
+      function getFilename(el) {
+        var card = el.closest('.thumb-card');
+        return card ? card.getAttribute('data-filename') : null;
+      }
+      function updateBulkUI() {
+        var count = selectedFiles.size;
+        bulkCount.textContent = count + ' selected';
+        bulkActions.classList.toggle('visible', count > 0);
+        if (count > 0) {
+          selectToggle.textContent = 'Cancel';
+          selectToggle.classList.add('is-active');
+        } else {
+          selectToggle.textContent = 'Select';
+          selectToggle.classList.remove('is-active');
+        }
+      }
+      function toggleSelection(filename) {
+        var card = document.querySelector('.thumb-card[data-filename="' + filename + '"]');
+        var check = card ? card.querySelector('.thumb-check') : null;
+        if (selectedFiles.has(filename)) {
+          selectedFiles.delete(filename);
+          if (card) card.classList.remove('is-selected');
+          if (check) check.classList.remove('is-checked');
+        } else {
+          selectedFiles.add(filename);
+          if (card) card.classList.add('is-selected');
+          if (check) check.classList.add('is-checked');
+        }
+        updateBulkUI();
+      }
+      if (!selectToggle) return;
+      selectToggle.addEventListener('click', function() {
+        if (selectedFiles.size > 0) {
+          selectedFiles.clear();
+          document.querySelectorAll('.thumb-card').forEach(function(card) {
+            card.classList.remove('is-selected');
+            var check = card.querySelector('.thumb-check');
+            if (check) check.classList.remove('is-checked');
+          });
+        }
+        selectMode = !selectMode;
+        selectToggle.classList.toggle('is-active', selectMode);
+        bulkActions.classList.toggle('visible', selectMode && selectedFiles.size > 0);
+        if (thumbGrid) thumbGrid.classList.toggle('select-mode', selectMode);
+        if (!selectMode) {
+          selectToggle.textContent = 'Select';
+        } else {
+          bulkCount.textContent = '0 selected';
+        }
+      });
+      document.addEventListener('click', function(e) {
+        var check = e.target.closest('.thumb-check');
+        if (!check) return;
+        e.preventDefault();
+        var filename = getFilename(check);
+        if (filename) toggleSelection(filename);
+      });
+      document.addEventListener('click', function(e) {
+        if (!selectMode) return;
+        var card = e.target.closest('.thumb-card');
+        if (!card) return;
+        var filename = getFilename(card);
+        if (filename) {
+          e.preventDefault();
+          toggleSelection(filename);
+        }
+      });
+      bulkDelete.addEventListener('click', function() {
+        var arr = Array.from(selectedFiles);
+        if (arr.length === 0) return;
+        if (!confirm('Delete ' + arr.length + ' photo(s)?')) return;
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/bulk/delete';
+        var filenames = document.createElement('input');
+        filenames.type = 'hidden';
+        filenames.name = 'filenames';
+        filenames.value = arr.join(',');
+        form.appendChild(filenames);
+        document.body.appendChild(form);
+        form.submit();
+      });
+      bulkTag.addEventListener('click', function() {
+        if (selectedFiles.size === 0) return;
+        tagModal.classList.add('visible');
+      });
+      tagCancel.addEventListener('click', function() {
+        tagModal.classList.remove('visible');
+      });
+      tagConfirm.addEventListener('click', function() {
+        var personId = personSelect.value;
+        if (!personId) return;
+        var arr = Array.from(selectedFiles);
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/bulk/tag';
+        var filenames = document.createElement('input');
+        filenames.type = 'hidden';
+        filenames.name = 'filenames';
+        filenames.value = arr.join(',');
+        var personIdInput = document.createElement('input');
+        personIdInput.type = 'hidden';
+        personIdInput.name = 'person_id';
+        personIdInput.value = personId;
+        form.appendChild(filenames);
+        form.appendChild(personIdInput);
+        document.body.appendChild(form);
+        form.submit();
+      });
+      bulkDownload.addEventListener('click', function() {
+        var arr = Array.from(selectedFiles);
+        if (arr.length === 0) return;
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/bulk/download';
+        var filenames = document.createElement('input');
+        filenames.type = 'hidden';
+        filenames.name = 'filenames';
+        filenames.value = arr.join(',');
+        form.appendChild(filenames);
+        document.body.appendChild(form);
+        form.submit();
       });
     })();
   </script>
