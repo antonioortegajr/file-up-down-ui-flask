@@ -477,6 +477,77 @@
     .bulk-btn--download:hover {
       background: var(--accent-hover);
     }
+    .btn-qr {
+      padding: 0.5rem 0.65rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text-muted);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      min-height: 40px;
+    }
+    .btn-qr:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+    .qr-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .qr-modal.visible { display: flex; }
+    .qr-modal-content {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .qr-modal h3 {
+      margin: 0 0 1rem;
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+    .qr-modal #qrcode {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .qr-modal #qrcode canvas {
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .qr-modal .qr-url {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin: 0;
+    }
+    .qr-modal-btns {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .qr-modal-btns button {
+      flex: 1;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .qr-modal-btns .btn-cancel {
+      color: var(--text-muted);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
     .tag-modal {
       display: none;
       position: fixed;
@@ -584,6 +655,7 @@
           <a href="{{ url_for('upload_form', view='timeline', filter=filter_mode) }}" class="{% if view_mode == 'timeline' %}is-active{% endif %}">Timeline</a>
         </div>
         <button type="button" class="select-toggle" id="select-toggle">Select</button>
+        <button type="button" class="btn-qr" id="btn-qr" aria-label="Show QR code">QR</button>
       </div>
       <div class="bulk-actions" id="bulk-actions">
         <p class="bulk-count" id="bulk-count">0 selected</p>
@@ -690,7 +762,18 @@
         </div>
       </div>
     </div>
+    <div class="qr-modal" id="qr-modal" role="dialog" aria-labelledby="qr-modal-title">
+      <div class="qr-modal-content">
+        <h3 id="qr-modal-title">Scan to open</h3>
+        <div id="qrcode"></div>
+        <p class="qr-url" id="qr-url"></p>
+        <div class="qr-modal-btns">
+          <button type="button" class="btn-cancel" id="qr-close">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     document.addEventListener('click', function(e) {
       var star = e.target.closest('.thumb-star');
@@ -892,6 +975,39 @@
         form.appendChild(filenames);
         document.body.appendChild(form);
         form.submit();
+      });
+    })();
+    (function() {
+      var btnQr = document.getElementById('btn-qr');
+      var qrModal = document.getElementById('qr-modal');
+      var qrClose = document.getElementById('qr-close');
+      var qrcodeEl = document.getElementById('qrcode');
+      var qrUrl = document.getElementById('qr-url');
+      if (!btnQr || !qrModal) return;
+      var qrGenerated = false;
+      btnQr.addEventListener('click', function() {
+        qrModal.classList.add('visible');
+        if (!qrGenerated) {
+          qrGenerated = true;
+          qrcodeEl.innerHTML = '';
+          new QRCode(qrcodeEl, {
+            text: window.location.origin,
+            width: 180,
+            height: 180,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.L
+          });
+          qrUrl.textContent = window.location.origin;
+        }
+      });
+      qrClose.addEventListener('click', function() {
+        qrModal.classList.remove('visible');
+      });
+      qrModal.addEventListener('click', function(e) {
+        if (e.target === qrModal) {
+          qrModal.classList.remove('visible');
+        }
       });
     })();
   </script>
