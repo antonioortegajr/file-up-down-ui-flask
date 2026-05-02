@@ -243,6 +243,103 @@
       border: 1px dashed var(--border);
       border-radius: calc(var(--radius) - 4px);
     }
+    .select-toggle {
+      padding: 0.55rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+    }
+    .select-toggle:hover { border-color: var(--accent); }
+    .select-toggle.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    .thumb-check {
+      position: absolute;
+      top: 0.35rem;
+      left: 0.35rem;
+      width: 22px;
+      height: 22px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--bg);
+      background: rgba(91, 159, 212, 0.85);
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      z-index: 1;
+    }
+    .thumb-card.is-selected .thumb-check { display: flex; }
+    .select-mode .thumb-check { display: flex; }
+    .thumb-check.is-checked {
+      background: var(--accent);
+    }
+    .thumb-check.is-checked::after {
+      content: "✓";
+    }
+    .bulk-actions {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      margin-bottom: 0.75rem;
+    }
+    .bulk-actions.visible { display: flex; }
+    .bulk-count {
+      flex: 1 1 100%;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .bulk-btn {
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: calc(var(--radius) - 4px);
+      cursor: pointer;
+      min-height: 40px;
+    }
+    .bulk-btn--download {
+      color: var(--bg);
+      background: var(--accent);
+    }
+    .bulk-btn--download:hover {
+      background: var(--accent-hover);
+    }
+    .toolbar-row { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.75rem; }
+    .download-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--bg);
+      background: var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 2000;
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .download-toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -274,13 +371,21 @@
       <p class="hint">Enter filenames from your library, separated by commas.</p>
     </section>
     {% if photos %}
+    <div class="toolbar-row">
+      <button type="button" class="select-toggle" id="select-toggle">Select</button>
+    </div>
+    <div class="bulk-actions" id="bulk-actions">
+      <p class="bulk-count" id="bulk-count">0 selected</p>
+      <button type="button" class="bulk-btn bulk-btn--download" id="bulk-download">Download zip</button>
+    </div>
     <ul class="thumb-grid">
       {% for filename in photos %}
       {% set parts = filename.rsplit('.', 1) %}
       {% set ext = parts[1].lower() if parts|length == 2 else '' %}
       {% set is_img = ext in ['png', 'jpg', 'jpeg', 'gif'] %}
       <li>
-        <div class="thumb-card">
+        <div class="thumb-card" data-filename="{{ filename|e }}">
+          <button type="button" class="thumb-check" aria-label="Select {{ filename|e }}"></button>
           <a class="thumb-preview" href="{{ url_for('file_detail', filename=filename) }}" title="Details for {{ filename|e }}">
             {% if is_img %}
             <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="" loading="lazy" width="200" height="200">
@@ -307,5 +412,110 @@
     </div>
     {% endif %}
   </div>
+  <div class="download-toast" id="download-toast"></div>
+  <script>
+    (function() {
+      var selectToggle = document.getElementById('select-toggle');
+      var bulkActions = document.getElementById('bulk-actions');
+      var bulkCount = document.getElementById('bulk-count');
+      var bulkDownload = document.getElementById('bulk-download');
+      var thumbGrid = document.querySelector('.thumb-grid');
+      var selectMode = false;
+      var selectedFiles = new Set();
+
+      function getFilename(el) {
+        var card = el.closest('.thumb-card');
+        return card ? card.getAttribute('data-filename') : null;
+      }
+
+      function updateBulkUI() {
+        var count = selectedFiles.size;
+        bulkCount.textContent = count + ' selected';
+        bulkActions.classList.toggle('visible', count > 0);
+      }
+
+      function toggleSelection(filename) {
+        var card = document.querySelector('.thumb-card[data-filename="' + filename + '"]');
+        var check = card ? card.querySelector('.thumb-check') : null;
+        if (selectedFiles.has(filename)) {
+          selectedFiles.delete(filename);
+          if (card) card.classList.remove('is-selected');
+          if (check) check.classList.remove('is-checked');
+        } else {
+          selectedFiles.add(filename);
+          if (card) card.classList.add('is-selected');
+          if (check) check.classList.add('is-checked');
+        }
+        updateBulkUI();
+      }
+
+      function showToast(message) {
+        var toast = document.getElementById('download-toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('visible');
+        setTimeout(function() {
+          toast.classList.remove('visible');
+        }, 3000);
+      }
+
+      if (!selectToggle) return;
+
+      selectToggle.addEventListener('click', function() {
+        if (selectedFiles.size > 0) {
+          selectedFiles.clear();
+          document.querySelectorAll('.thumb-card').forEach(function(card) {
+            card.classList.remove('is-selected');
+            var check = card.querySelector('.thumb-check');
+            if (check) check.classList.remove('is-checked');
+          });
+        }
+        selectMode = !selectMode;
+        selectToggle.classList.toggle('is-active', selectMode);
+        bulkActions.classList.toggle('visible', selectMode && selectedFiles.size > 0);
+        if (thumbGrid) thumbGrid.classList.toggle('select-mode', selectMode);
+        if (!selectMode) {
+          selectToggle.textContent = 'Select';
+        } else {
+          bulkCount.textContent = '0 selected';
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        var check = e.target.closest('.thumb-check');
+        if (check) {
+          e.preventDefault();
+          var filename = getFilename(check);
+          if (filename) toggleSelection(filename);
+          return;
+        }
+        if (!selectMode) return;
+        var card = e.target.closest('.thumb-card');
+        if (!card) return;
+        if (e.target.closest('a') || e.target.closest('form')) return;
+        var filename = getFilename(card);
+        if (filename) {
+          e.preventDefault();
+          toggleSelection(filename);
+        }
+      });
+
+      bulkDownload.addEventListener('click', function() {
+        var arr = Array.from(selectedFiles);
+        if (arr.length === 0) return;
+        showToast('Downloading ' + arr.length + ' photo(s)...');
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/bulk/download';
+        var filenames = document.createElement('input');
+        filenames.type = 'hidden';
+        filenames.name = 'filenames';
+        filenames.value = arr.join(',');
+        form.appendChild(filenames);
+        document.body.appendChild(form);
+        form.submit();
+      });
+    })();
+  </script>
 </body>
 </html>
