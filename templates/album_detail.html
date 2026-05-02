@@ -376,7 +376,7 @@
     </div>
     <div class="bulk-actions" id="bulk-actions">
       <p class="bulk-count" id="bulk-count">0 selected</p>
-      <button type="button" class="bulk-btn bulk-btn--download" id="bulk-download">Download zip</button>
+      <button type="button" class="bulk-btn bulk-btn--download" id="bulk-download">Download (0)</button>
     </div>
     <ul class="thumb-grid">
       {% for filename in photos %}
@@ -431,6 +431,7 @@
       function updateBulkUI() {
         var count = selectedFiles.size;
         bulkCount.textContent = count + ' selected';
+        bulkDownload.textContent = 'Download (' + count + ')';
         bulkActions.classList.toggle('visible', count > 0);
       }
 
@@ -503,7 +504,7 @@
       bulkDownload.addEventListener('click', function() {
         var arr = Array.from(selectedFiles);
         if (arr.length === 0) return;
-        showToast('Downloading ' + arr.length + ' photo(s)...');
+        showToast(arr.length > 10 ? 'Downloading ' + arr.length + ' photos — this may take a moment…' : 'Downloading ' + arr.length + ' photo(s)...');
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = '/bulk/download';
