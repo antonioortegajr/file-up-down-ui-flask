@@ -604,6 +604,26 @@
       color: var(--bg);
       background: var(--accent);
     }
+    .download-toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--bg);
+      background: var(--accent);
+      border-radius: calc(var(--radius) - 4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 2000;
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .download-toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -772,6 +792,7 @@
         </div>
       </div>
     </div>
+    <div class="download-toast" id="download-toast"></div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
@@ -965,6 +986,7 @@
       bulkDownload.addEventListener('click', function() {
         var arr = Array.from(selectedFiles);
         if (arr.length === 0) return;
+        showToast('Downloading ' + arr.length + ' photo(s)...');
         var form = document.createElement('form');
         form.method = 'POST';
         form.action = '/bulk/download';
@@ -1010,6 +1032,15 @@
         }
       });
     })();
+    function showToast(message) {
+      var toast = document.getElementById('download-toast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.add('visible');
+      setTimeout(function() {
+        toast.classList.remove('visible');
+      }, 3000);
+    }
   </script>
 </body>
 </html>
