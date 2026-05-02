@@ -3,8 +3,10 @@
 venv/
 env/
 
-# Uploaded files (runtime data — do not commit)
+# Uploaded files and runtime data — do not commit
 uploads/
+albums/
+people/
 
 # Python
 __pycache__/
