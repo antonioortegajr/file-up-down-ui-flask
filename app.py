@@ -660,10 +660,12 @@ def bulk_download():
                 zf.writestr(fn, data)
 
     buffer.seek(0)
+    from datetime import date
+    zip_name = f"photos-{date.today().isoformat()}.zip"
     return Response(
         buffer.getvalue(),
         mimetype="application/zip",
-        headers={"Content-Disposition": "attachment; filename=photos.zip"},
+        headers={"Content-Disposition": f"attachment; filename={zip_name}"},
     )
 
 
